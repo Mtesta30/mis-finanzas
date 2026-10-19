@@ -320,9 +320,15 @@ html.noscroll{overflow:hidden}
 #app.go-r{animation:tabInR 190ms var(--ease-out)}
 #app.go-l{animation:tabInL 190ms var(--ease-out)}
 /* Fondo del inicio de sesión: siluetas de monedas, billetes y tarjetas que flotan muy despacio */
-.bgf{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;filter:blur(1.6px)}
-.fi{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:auto;aspect-ratio:var(--a,1);color:var(--fg);fill:currentColor;opacity:.07;transform:rotate(var(--r));animation:floaty var(--d) ease-in-out var(--t) infinite alternate}
-@keyframes floaty{from{transform:translate3d(0,0,0) rotate(var(--r))}to{transform:translate3d(0,-24px,0) rotate(calc(var(--r) + 9deg))}}
+.bgf{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+/* Como lluvia: caen despacio, salen por abajo y vuelven a entrar por arriba. Las grandes caen más lento. */
+.fi{position:absolute;left:var(--x);top:0;width:var(--s);height:auto;aspect-ratio:var(--a,1);color:var(--fg);fill:currentColor;opacity:.07;filter:blur(1.6px);transform:translate3d(0,-30vh,0) rotate(var(--r));animation:rain var(--d) linear var(--t) infinite;will-change:transform}
+@keyframes rain{
+  from{transform:translate3d(0,-30vh,0) rotate(var(--r))}
+  50%{transform:translate3d(var(--sw),55vh,0) rotate(calc(var(--r) + var(--spin) / 2))}
+  to{transform:translate3d(0,130vh,0) rotate(calc(var(--r) + var(--spin)))}
+}
+@keyframes breathe{from{opacity:.035}to{opacity:.11}}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fi{opacity:.1}}
 :root[data-theme="dark"] .fi{opacity:.1}
 .auth-card{position:relative}
@@ -388,7 +394,8 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   .acc summary::after{transition:none}
   html.railanim body,html.railanim .tabbar{transition:none}
   #app.go-r,#app.go-l{animation:tabFade 150ms ease}
-  .fi{animation:none}
+  /* Con "reducir movimiento" las siluetas no se desplazan: solo respiran (cambian de tono muy despacio) */
+  .fi{top:var(--y);transform:rotate(var(--r));will-change:auto;animation:breathe calc(var(--d) * .6) ease-in-out var(--t) infinite alternate}
   .avatar-btn:active,.sw:active,.month-label:active,.today:active,.mcell:active{transform:none}
   .mpop,.mpop[hidden]{transform:translateX(var(--px));transition:opacity 150ms ease,visibility 0s 150ms}
   .mpop:not([hidden]){transition:opacity 150ms ease}
@@ -441,18 +448,22 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
     <symbol id="s-bars" viewBox="0 0 100 100"><rect x="8" y="56" width="20" height="36" rx="5"/><rect x="40" y="32" width="20" height="60" rx="5"/><rect x="72" y="8" width="20" height="84" rx="5"/></symbol>
     <symbol id="s-trend" viewBox="0 0 100 100"><path d="M6 78l30-30 20 18 38-44" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs></svg>
-  <svg class="fi" style="--x:6%;--y:4%;--s:72px;--r:-12deg;--d:19s;--t:-3s"><use href="#s-coin"/></svg>
-  <svg class="fi" style="--x:70%;--y:6%;--s:150px;--a:1.78;--r:10deg;--d:23s;--t:-9s"><use href="#s-bill"/></svg>
-  <svg class="fi" style="--x:34%;--y:2%;--s:46px;--r:8deg;--d:16s;--t:-6s"><use href="#s-coin"/></svg>
-  <svg class="fi" style="--x:-3%;--y:30%;--s:130px;--a:1.6;--r:14deg;--d:25s;--t:-12s"><use href="#s-card"/></svg>
-  <svg class="fi" style="--x:88%;--y:36%;--s:64px;--r:-6deg;--d:21s;--t:-5s"><use href="#s-bars"/></svg>
-  <svg class="fi" style="--x:80%;--y:56%;--s:140px;--a:1.78;--r:-14deg;--d:22s;--t:-14s"><use href="#s-bill"/></svg>
-  <svg class="fi" style="--x:8%;--y:60%;--s:100px;--a:1.2;--r:-8deg;--d:20s;--t:-8s"><use href="#s-wallet"/></svg>
-  <svg class="fi" style="--x:22%;--y:86%;--s:150px;--a:1.78;--r:9deg;--d:24s;--t:-4s"><use href="#s-bill"/></svg>
-  <svg class="fi" style="--x:58%;--y:84%;--s:58px;--r:12deg;--d:18s;--t:-11s"><use href="#s-coin"/></svg>
-  <svg class="fi" style="--x:76%;--y:82%;--s:96px;--r:6deg;--d:26s;--t:-7s"><use href="#s-trend"/></svg>
-  <svg class="fi" style="--x:44%;--y:70%;--s:120px;--a:1.6;--r:-10deg;--d:22s;--t:-16s"><use href="#s-card"/></svg>
-  <svg class="fi" style="--x:50%;--y:16%;--s:40px;--r:-4deg;--d:17s;--t:-2s"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:6%;--y:8%;--s:60px;--r:-12deg;--d:20s;--t:-4s;--sw:18px;--spin:120deg"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:70%;--y:6%;--s:150px;--a:1.78;--r:10deg;--d:30s;--t:-18s;--sw:-26px;--spin:40deg"><use href="#s-bill"/></svg>
+  <svg class="fi" style="--x:34%;--y:2%;--s:44px;--r:8deg;--d:16s;--t:-9s;--sw:14px;--spin:200deg"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:-2%;--y:30%;--s:130px;--a:1.6;--r:14deg;--d:28s;--t:-22s;--sw:24px;--spin:-50deg"><use href="#s-card"/></svg>
+  <svg class="fi" style="--x:88%;--y:36%;--s:60px;--r:-6deg;--d:24s;--t:-6s;--sw:-16px;--spin:60deg"><use href="#s-bars"/></svg>
+  <svg class="fi" style="--x:80%;--y:56%;--s:140px;--a:1.78;--r:-14deg;--d:27s;--t:-12s;--sw:20px;--spin:-35deg"><use href="#s-bill"/></svg>
+  <svg class="fi" style="--x:10%;--y:60%;--s:100px;--a:1.2;--r:-8deg;--d:26s;--t:-20s;--sw:-22px;--spin:45deg"><use href="#s-wallet"/></svg>
+  <svg class="fi" style="--x:22%;--y:86%;--s:150px;--a:1.78;--r:9deg;--d:31s;--t:-5s;--sw:28px;--spin:30deg"><use href="#s-bill"/></svg>
+  <svg class="fi" style="--x:58%;--y:84%;--s:52px;--r:12deg;--d:17s;--t:-13s;--sw:-12px;--spin:-160deg"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:76%;--y:82%;--s:90px;--r:6deg;--d:25s;--t:-2s;--sw:18px;--spin:25deg"><use href="#s-trend"/></svg>
+  <svg class="fi" style="--x:44%;--y:70%;--s:120px;--a:1.6;--r:-10deg;--d:29s;--t:-24s;--sw:-20px;--spin:-40deg"><use href="#s-card"/></svg>
+  <svg class="fi" style="--x:50%;--y:16%;--s:40px;--r:-4deg;--d:15s;--t:-8s;--sw:10px;--spin:180deg"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:92%;--y:76%;--s:46px;--r:5deg;--d:18s;--t:-15s;--sw:-10px;--spin:150deg"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:40%;--y:46%;--s:130px;--a:1.78;--r:-9deg;--d:33s;--t:-27s;--sw:24px;--spin:35deg"><use href="#s-bill"/></svg>
+  <svg class="fi" style="--x:16%;--y:44%;--s:38px;--r:-7deg;--d:14s;--t:-10s;--sw:-12px;--spin:-190deg"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:64%;--y:34%;--s:84px;--a:1.2;--r:7deg;--d:28s;--t:-17s;--sw:18px;--spin:-30deg"><use href="#s-wallet"/></svg>
 </div>
 <main class="auth">
   <div class="auth-card">
