@@ -4,6 +4,6 @@
 // la seguridad la dan las reglas de la base de datos (cada usuario solo ve sus filas).
 // Nunca pongas aquí la "secret key".
 window.FINANZAS_CONFIG = {
-  supabaseUrl: "https://supabase.com/dashboard/project/xbrrvtebgweeigymemzv",
+  supabaseUrl: "https://xbrrvtebgweeigymemzv.supabase.co",
   supabaseAnonKey: "sb_publishable_uOt4XPOGFtgegQjCwhm7hg_rs70tdq7"
 };
