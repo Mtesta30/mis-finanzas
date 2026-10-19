@@ -8,7 +8,7 @@ const today=new Date();
 let cur=mk(today), tab="resumen", movTipo="gasto", pendingRender=false;
 try{const t=localStorage.getItem("fin.tab"); if(t&&TABS.some(x=>x[0]===t)) tab=t;}catch(e){}
 
-function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[]};}
+function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[],perfil:{nombre:"",apodo:"",telefono:"",nacimiento:"",ciudad:"",foto:"",omitido:false}};}
 function mk(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
 function shift(k,n){const [y,m]=k.split("-").map(Number);return mk(new Date(y,m-1+n,1));}
 function mName(k,short){const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("es-CO",short?{month:"short"}:{month:"long",year:"numeric"});}
@@ -64,7 +64,7 @@ async function loadAll(){
   if(error){offline=true;render();return;}
   const c=defCfg(), ms={};
   (data||[]).forEach(r=>{if(r.doc_id==="config")Object.assign(c,cleanCfg(r.data||{}));else if(/^m-\d{4}-\d{2}$/.test(r.doc_id))ms[r.doc_id.slice(2)]=cleanMonth(r.data||{});});
-  cfg=c;months=ms;offline=false;ready=true;render();
+  cfg=c;months=ms;offline=false;ready=true;render();maybeWelcome();
 }
 
 /* ---------- validación de datos leídos ---------- */
@@ -72,9 +72,15 @@ const safeId=v=>/^[a-z0-9]{1,40}$/i.test(String(v??""))?String(v):uidv();
 const n0=v=>{v=+v;return isFinite(v)?v:0;};
 const str=(v,max=120)=>String(v??"").slice(0,max);
 const arr=v=>Array.isArray(v)?v:[];
+function cleanPerfil(p){
+  p=p&&typeof p==="object"?p:{};
+  const foto=typeof p.foto==="string"&&p.foto.length<=60000&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(p.foto)?p.foto:"";
+  return {nombre:str(p.nombre,60),apodo:str(p.apodo,30),telefono:str(p.telefono,20),
+    nacimiento:/^\d{4}-\d{2}-\d{2}$/.test(p.nacimiento)?p.nacimiento:"",ciudad:str(p.ciudad,60),foto,omitido:p.omitido===true};
+}
 function cleanCfg(c){
   const pres={};Object.entries(c.presupuestos&&typeof c.presupuestos==="object"?c.presupuestos:{}).forEach(([k,v])=>{if(CATS.includes(k))pres[k]=n0(v);});
-  return {salario:n0(c.salario),presupuestos:pres,
+  return {salario:n0(c.salario),presupuestos:pres,perfil:cleanPerfil(c.perfil),
     fijos:arr(c.fijos).map(f=>({id:safeId(f.id),nombre:str(f.nombre),monto:n0(f.monto),cat:str(f.cat,40),dia:Math.min(31,Math.max(0,parseInt(f.dia)||0))||null})),
     metas:arr(c.metas).map(g=>({id:safeId(g.id),nombre:str(g.nombre),objetivo:n0(g.objetivo),ahorrado:n0(g.ahorrado),fecha:/^\d{4}-\d{2}$/.test(g.fecha)?g.fecha:""})),
     deudas:arr(c.deudas).map(d=>({id:safeId(d.id),nombre:str(d.nombre),saldo:n0(d.saldo),inicial:n0(d.inicial),cuota:n0(d.cuota),tasa:str(d.tasa,10)}))};
@@ -93,6 +99,7 @@ function renderTabs(){
   const ml=mName(cur);document.getElementById("monthLabel").textContent=ml.charAt(0).toUpperCase()+ml.slice(1);
 }
 function render(){
+  updateTop();
   const a=document.activeElement;
   if(a&&document.getElementById("app").contains(a)&&/INPUT|SELECT/.test(a.tagName)&&a.type!=="checkbox"){pendingRender=true;return;}
   pendingRender=false;renderTabs();
@@ -244,6 +251,13 @@ document.addEventListener("click",e=>{
   const b=e.target.closest("[data-act]");if(!b)return;const id=b.dataset.id;
   switch(b.dataset.act){
     case "logout":sb&&sb.auth.signOut();break;
+    case "openProfile":openProfile(b);break;
+    case "closeProfile":closeLayer($("profileSheet"));break;
+    case "pickFoto":$("fotoInput").click();break;
+    case "quitarFoto":cfg.perfil.foto="";saveCfg();updateProfPhotoUI();updateTop();toast("Foto quitada");break;
+    case "cropCancel":cancelCrop();break;
+    case "cropOk":cropDone();break;
+    case "skipWelcome":cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));break;
     case "tab":tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }render();window.scrollTo(0,0);break;
     case "prevMonth":cur=shift(cur,-1);render();break;
     case "nextMonth":cur=shift(cur,1);render();break;
@@ -266,6 +280,12 @@ document.addEventListener("submit",e=>{
   const f=e.target.closest("form[data-form]");if(!f)return;e.preventDefault();
   const fd=Object.fromEntries(new FormData(f));const id=f.dataset.id;
   switch(f.dataset.form){
+    case "perfil":{const p=cfg.perfil,lim={nombre:60,apodo:30,telefono:20,nacimiento:10,ciudad:60};
+      Object.keys(lim).forEach(k=>{p[k]=str(String(fd[k]||"").trim(),lim[k]);});
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(p.nacimiento))p.nacimiento="";
+      saveCfg();updateTop();toast("Perfil guardado");return;}
+    case "bienvenida":{const n=str(String(fd.nombre||"").trim(),60);if(!n)return toast("Escribe tu nombre o toca Ahora no.");
+      cfg.perfil.nombre=n;saveCfg();updateTop();closeLayer($("welcome"));toast("Encantado, "+firstName());return;}
     case "salario":{const v=num(fd.salario);if(v<=0)return toast("Escribe un salario mayor a cero.");cfg.salario=v;saveCfg();toast("Salario base guardado");break;}
     case "salarioMes":{const v=num(fd.salario);if(v<0)return toast("Escribe un salario válido.");const m=month(cur);months[cur]={...months[cur],movs:m.movs,pagados:m.pagados,salarioMes:v};saveMonth(cur);toast("Salario de "+mName(cur)+" guardado");break;}
     case "mov":{const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");const fecha=fd.fecha||cur+"-01";const k=fecha.slice(0,7);
@@ -337,14 +357,161 @@ function showApp(){ $("authView").hidden=true;$("topbar").hidden=false;$("appVie
 function setSession(session){
   if(session&&session.user){
     if(authMode==="reset")return;
-    $("userEmail").textContent=session.user.email||"";
+    userMail=session.user.email||"";$("userEmail").textContent=userMail;
     if(uid!==session.user.id){uid=session.user.id;ready=false;cfg=defCfg();months={};showApp();render();loadAll();}
     else showApp();
   }else{
-    uid=null;ready=false;cfg=defCfg();months={};
+    uid=null;ready=false;cfg=defCfg();months={};userMail="";resetLayers();
     $("authPass").value="";setAuthMode("login");showAuth();
   }
 }
+
+/* ---------- perfil: saludo, avatar y hoja ---------- */
+let userMail="",topKey="";
+const PROF_FIELDS=["nombre","apodo","telefono","nacimiento","ciudad"];
+function emailName(){
+  const p=(userMail.split("@")[0]||"").split(/[._+\-]/)[0].replace(/[^\p{L}]/gu,"");
+  return p?p.charAt(0).toUpperCase()+p.slice(1).toLowerCase():"";
+}
+function firstName(){
+  const p=cfg.perfil||{};
+  return (p.apodo||"").trim()||(p.nombre||"").trim().split(/\s+/)[0]||emailName();
+}
+function greeting(){
+  const h=new Date().getHours(),n=firstName();
+  const s=h>=5&&h<12?"Buenos días":h>=12&&h<19?"Buenas tardes":"Buenas noches";
+  return n?s+", "+n:s;
+}
+function initials(){
+  const w=(((cfg.perfil||{}).nombre||"").trim()||firstName()).split(/\s+/).filter(Boolean);
+  if(!w.length)return "?";
+  return ([...w[0]][0]+(w.length>1?[...w[1]][0]:"")).toUpperCase();
+}
+function hue(s){let h=0;for(const c of s)h=(h*31+c.codePointAt(0))%360;return h;}
+function paintAvatar(el){
+  const p=cfg.perfil||{};
+  if(p.foto){el.innerHTML=`<img src="${esc(p.foto)}" alt="">`;el.style.background="var(--sunk)";}
+  else{el.textContent=initials();el.style.background=`hsl(${hue(p.nombre||p.apodo||userMail)} 52% 40%)`;}
+}
+function updateTop(){
+  const p=cfg.perfil||{},g=greeting();
+  const key=[g,initials(),(p.foto||"").length,(p.foto||"").slice(-24),p.nombre,userMail].join("|");
+  if(key===topKey)return;
+  topKey=key;$("greeting").textContent=g;paintAvatar($("topAvatar"));paintAvatar($("profAvatar"));
+}
+
+/* capas (hoja de perfil y bienvenida): entran y salen con transición */
+const layerTimers=new WeakMap();let layerOpener=null;
+function openLayer(el,opener){
+  clearTimeout(layerTimers.get(el));layerOpener=opener||null;
+  el.hidden=false;void el.offsetWidth;el.classList.add("open");
+  document.documentElement.classList.add("noscroll");$("topbar").inert=true;$("appView").inert=true;
+  const f=el.querySelector("[data-autofocus]");if(f)f.focus({preventScroll:true});
+}
+function closeLayer(el){
+  if(el.hidden||!el.classList.contains("open"))return;
+  el.classList.remove("open");
+  layerTimers.set(el,setTimeout(()=>{el.hidden=true;},300));
+  document.documentElement.classList.remove("noscroll");$("topbar").inert=false;$("appView").inert=false;
+  if(layerOpener&&layerOpener.focus)layerOpener.focus({preventScroll:true});layerOpener=null;
+}
+function resetLayers(){
+  ["profileSheet","welcome"].forEach(id=>{const el=$(id);clearTimeout(layerTimers.get(el));el.classList.remove("open");el.hidden=true;});
+  document.documentElement.classList.remove("noscroll");$("topbar").inert=false;$("appView").inert=false;
+  crop.img=null;$("cropBox").hidden=true;$("profMain").hidden=false;
+}
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape")return;
+  if(!$("cropBox").hidden){cancelCrop();return;}
+  if($("profileSheet").classList.contains("open"))closeLayer($("profileSheet"));
+  else if($("welcome").classList.contains("open")){cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));}
+});
+
+function updateProfPhotoUI(){
+  paintAvatar($("profAvatar"));
+  $("quitarFotoBtn").hidden=!cfg.perfil.foto;
+  $("pickFotoBtn").textContent=cfg.perfil.foto?"Cambiar foto":"Subir foto";
+}
+function openProfile(opener){
+  if(!ready){toast("Espera a que carguen tus datos.");return;}
+  const f=$("profForm");
+  PROF_FIELDS.forEach(k=>{f.elements[k].value=cfg.perfil[k]||"";});
+  f.elements.nacimiento.max=new Date().toISOString().slice(0,10);
+  $("cropBox").hidden=true;$("profMain").hidden=false;updateProfPhotoUI();
+  openLayer($("profileSheet"),opener);
+}
+function maybeWelcome(){
+  const p=cfg.perfil;
+  if(p.nombre||p.omitido||!$("welcome").hidden||!$("profileSheet").hidden)return;
+  openLayer($("welcome"),null);
+}
+
+/* cerrar la hoja arrastrándola hacia abajo (solo en pantallas angostas) */
+(function(){
+  const layer=$("profileSheet"),sheet=layer.querySelector(".sheet"),head=layer.querySelector(".sheet-head");
+  let d=null;
+  head.addEventListener("pointerdown",e=>{
+    if(!matchMedia("(max-width:699px)").matches||e.target.closest("button"))return;
+    d={id:e.pointerId,y:e.clientY,t:performance.now(),dy:0};head.setPointerCapture(e.pointerId);sheet.style.transition="none";
+  });
+  head.addEventListener("pointermove",e=>{
+    if(!d||e.pointerId!==d.id)return;
+    const dy=e.clientY-d.y;d.dy=dy>0?dy:dy/6;sheet.style.transform=`translateY(${d.dy}px)`;
+  });
+  const end=e=>{
+    if(!d||e.pointerId!==d.id)return;
+    const v=d.dy/Math.max(1,performance.now()-d.t),shut=d.dy>sheet.offsetHeight*0.35||(d.dy>40&&v>0.11);
+    d=null;sheet.style.transition="";sheet.style.transform="";
+    if(shut)closeLayer(layer);
+  };
+  head.addEventListener("pointerup",end);head.addEventListener("pointercancel",end);
+})();
+
+/* foto: se elige, se encuadra dentro de un círculo y se guarda reducida (256 px) */
+const crop={img:null,w:0,h:0,base:1,zoom:1,x:0,y:0,vp:260};
+function paintCrop(){
+  const s=crop.base*crop.zoom,mx=Math.max(0,(crop.w*s-crop.vp)/2),my=Math.max(0,(crop.h*s-crop.vp)/2);
+  crop.x=Math.min(mx,Math.max(-mx,crop.x));crop.y=Math.min(my,Math.max(-my,crop.y));
+  const el=$("cropImg");el.style.width=crop.w*s+"px";el.style.height=crop.h*s+"px";
+  el.style.transform=`translate(-50%,-50%) translate(${crop.x}px,${crop.y}px)`;
+}
+function startCrop(img){
+  crop.img=img;crop.w=img.naturalWidth;crop.h=img.naturalHeight;
+  $("profMain").hidden=true;$("cropBox").hidden=false;
+  crop.vp=$("cropVp").clientWidth||260;crop.base=Math.max(crop.vp/crop.w,crop.vp/crop.h);
+  crop.zoom=1;crop.x=0;crop.y=0;$("cropZoom").value=1;$("cropImg").src=img.src;paintCrop();
+}
+function cancelCrop(){crop.img=null;$("cropImg").removeAttribute("src");$("cropBox").hidden=true;$("profMain").hidden=false;}
+function cropDone(){
+  if(!crop.img)return;
+  const OUT=256,k=OUT/crop.vp,s=crop.base*crop.zoom;
+  const c=document.createElement("canvas");c.width=c.height=OUT;
+  const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,OUT,OUT);g.imageSmoothingQuality="high";
+  g.drawImage(crop.img,(crop.vp/2+crop.x-crop.w*s/2)*k,(crop.vp/2+crop.y-crop.h*s/2)*k,crop.w*s*k,crop.h*s*k);
+  let q=.85,url=c.toDataURL("image/jpeg",q);
+  while(url.length>60000&&q>.4){q-=.1;url=c.toDataURL("image/jpeg",q);}
+  if(url.length>60000)return toast("La foto es muy pesada. Prueba con otra.");
+  cfg.perfil.foto=url;saveCfg();cancelCrop();updateProfPhotoUI();updateTop();toast("Foto guardada");
+}
+$("fotoInput").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0];e.target.value="";
+  if(!f)return;
+  if(!/^image\/(jpeg|png|webp)$/.test(f.type))return toast("Usa una imagen JPG, PNG o WebP.");
+  if(f.size>10*1024*1024)return toast("La imagen pesa más de 10 MB.");
+  const r=new FileReader();
+  r.onload=()=>{const img=new Image();img.onload=()=>startCrop(img);img.onerror=()=>toast("No se pudo leer la imagen.");img.src=r.result;};
+  r.onerror=()=>toast("No se pudo leer la imagen.");
+  r.readAsDataURL(f);
+});
+(function(){
+  const vp=$("cropVp");let d=null;
+  vp.addEventListener("pointerdown",e=>{d={id:e.pointerId,sx:e.clientX,sy:e.clientY,x:crop.x,y:crop.y};vp.setPointerCapture(e.pointerId);});
+  vp.addEventListener("pointermove",e=>{if(!d||e.pointerId!==d.id)return;crop.x=d.x+e.clientX-d.sx;crop.y=d.y+e.clientY-d.sy;paintCrop();});
+  const end=e=>{if(d&&e.pointerId===d.id)d=null;};
+  vp.addEventListener("pointerup",end);vp.addEventListener("pointercancel",end);
+  vp.addEventListener("wheel",e=>{e.preventDefault();crop.zoom=Math.min(3,Math.max(1,crop.zoom-e.deltaY*0.002));$("cropZoom").value=crop.zoom;paintCrop();},{passive:false});
+  $("cropZoom").addEventListener("input",e=>{crop.zoom=+e.target.value;paintCrop();});
+})();
 
 /* ---------- arranque ---------- */
 renderTabs();

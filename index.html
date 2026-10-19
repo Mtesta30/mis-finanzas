@@ -59,7 +59,14 @@ header.top{background:var(--surface);border-bottom:1px solid color-mix(in srgb,v
 @media (prefers-reduced-transparency:reduce){
   body::before,header.top{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
-.brand{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 6px;flex-wrap:wrap}
+.brand{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:6px 12px;padding-block:12px 6px}
+.brand h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:560px){
+  .brand{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"g u" "m m"}
+  .brand h1{grid-area:g}
+  .brand .user{grid-area:u}
+  .brand .month{grid-area:m;justify-content:center}
+}
 /* Espaciado de letras como Apple: más junto cuanto más grande, un poco más abierto cuanto más pequeño */
 body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
 h1{font-family:var(--f-display);font-size:1.5rem;line-height:1.1;margin:0;letter-spacing:-.022em;font-optical-sizing:auto}
@@ -172,12 +179,55 @@ button,[role="button"]{-webkit-user-select:none;user-select:none;-webkit-touch-c
 .msg{font-size:.88rem;border-radius:8px;padding:10px 12px}
 .msg.err{background:var(--bad-soft);color:var(--bad)}
 .msg.ok{background:var(--good-soft);color:var(--good)}
+/* Avatar: foto o iniciales */
+.avatar{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--accent);color:#fff;font:600 .9rem var(--f-body);letter-spacing:.02em;flex:none;user-select:none;-webkit-user-select:none}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.avatar.lg{width:88px;height:88px;font-size:1.7rem}
+.avatar-btn{border:0;padding:3px;background:none;border-radius:50%;cursor:pointer;display:grid;transition:transform 120ms var(--ease-out)}
+.avatar-btn:active{transform:scale(.94)}
+/* Hoja de perfil y ventana de bienvenida */
+html.noscroll{overflow:hidden}
+.layer{position:fixed;inset:0;z-index:30;display:grid;align-items:end;justify-items:center}
+.layer .backdrop{position:absolute;inset:0;background:rgba(10,12,20,.42);opacity:0;transition:opacity 240ms var(--ease-out)}
+.layer.open .backdrop{opacity:1}
+.sheet{position:relative;width:100%;max-width:560px;max-height:min(92dvh,760px);display:flex;flex-direction:column;background:var(--surface);color:var(--fg);border-radius:20px 20px 0 0;box-shadow:0 -8px 40px rgba(10,12,20,.18);padding-bottom:env(safe-area-inset-bottom,0px);transform:translateY(100%);transition:transform 340ms cubic-bezier(.32,.72,0,1)}
+.layer.open .sheet{transform:none}
+.layer:not(.open) .sheet{transition-duration:240ms}
+.sheet-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:22px 18px 6px;touch-action:none}
+.sheet-head h2{margin:0}
+.grab{position:absolute;top:8px;left:50%;width:36px;height:5px;margin-left:-18px;border-radius:3px;background:var(--line)}
+.sheet-body{overflow-y:auto;overscroll-behavior:contain;padding:8px 18px 22px;display:grid;gap:16px;align-content:start}
+.stack{display:grid;gap:18px}
+.fields{display:grid;gap:12px}
+.prof-photo{display:flex;align-items:center;gap:16px}
+.prof-photo-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.acct{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:14px;border-top:1px solid var(--line)}
+.acct .status{overflow-wrap:anywhere}
+.row-actions{display:flex;justify-content:flex-end;gap:8px}
+.crop{display:grid;gap:14px;justify-items:center}
+.crop-vp{position:relative;width:min(260px,100%);aspect-ratio:1;border-radius:50%;overflow:hidden;background:var(--sunk);touch-action:none;cursor:grab;box-shadow:0 0 0 3px var(--accent-soft)}
+.crop-vp img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none;user-select:none;-webkit-user-select:none}
+.crop input[type=range]{width:min(260px,100%);padding:0;border:0;background:none;accent-color:var(--accent)}
+.layer.center{align-items:center}
+.layer.center .sheet{border-radius:20px;max-width:440px;transform:scale(.96);opacity:0;transition:transform 220ms var(--ease-out),opacity 220ms var(--ease-out);padding-top:14px}
+.layer.center.open .sheet{transform:none;opacity:1}
+@media (min-width:700px){
+  .layer{align-items:center}
+  .sheet{border-radius:20px;transform:scale(.96);opacity:0;transition:transform 220ms var(--ease-out),opacity 220ms var(--ease-out);box-shadow:0 20px 60px rgba(10,12,20,.25)}
+  .layer.open .sheet{transform:none;opacity:1}
+  .layer:not(.open) .sheet{transition-duration:160ms}
+  .grab{display:none}
+}
 /* Movimiento reducido: sin hundimientos ni deslizamientos; quedan solo cambios suaves de color y transparencia */
 @media (prefers-reduced-motion:reduce){
   .btn:active,.icon:active,.tab:active,.seg button:active{transform:none}
   .btn,.icon,.tab,.seg button{transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease}
   .toast,.toast[hidden]{transform:translateX(-50%);transition:opacity 150ms ease,visibility 0s 150ms}
   .toast:not([hidden]){transition:opacity 150ms ease}
+  .avatar-btn:active{transform:none}
+  .layer .sheet,.layer.center .sheet,.layer.open .sheet,.layer.center.open .sheet{transform:none;transition:opacity 150ms ease}
+  .layer .sheet,.layer.center .sheet{opacity:0}
+  .layer.open .sheet,.layer.center.open .sheet{opacity:1}
 }
 /* Más contraste: bordes definidos y barra casi sólida */
 @media (prefers-contrast:more){
@@ -191,13 +241,13 @@ button,[role="button"]{-webkit-user-select:none;user-select:none;-webkit-touch-c
 <header class="top" id="topbar" hidden>
   <div class="wrap">
     <div class="brand">
-      <h1>Mis Finanzas</h1>
+      <h1 id="greeting">Hola</h1>
       <div class="month">
         <button class="icon" data-act="prevMonth" aria-label="Mes anterior">&lsaquo;</button>
         <strong id="monthLabel">mes</strong>
         <button class="icon" data-act="nextMonth" aria-label="Mes siguiente">&rsaquo;</button>
       </div>
-      <div class="user"><span id="userEmail" class="status"></span><button class="icon" data-act="logout">Cerrar sesión</button></div>
+      <div class="user"><button class="avatar-btn" data-act="openProfile" aria-label="Abrir tu perfil"><span class="avatar" id="topAvatar"></span></button></div>
     </div>
     <nav class="tabs" role="tablist" id="tabs"></nav>
   </div>
@@ -217,6 +267,69 @@ button,[role="button"]{-webkit-user-select:none;user-select:none;-webkit-touch-c
   </div>
 </main></div>
 <div class="toast" id="toast" hidden></div>
+
+<!-- Perfil: hoja que sube desde abajo (en pantallas anchas, ventana centrada) -->
+<div class="layer" id="profileSheet" hidden>
+  <div class="backdrop" data-act="closeProfile"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="profTitle">
+    <div class="sheet-head">
+      <span class="grab" aria-hidden="true"></span>
+      <h2 id="profTitle">Tu perfil</h2>
+      <button type="button" class="icon" data-act="closeProfile" data-autofocus>Cerrar</button>
+    </div>
+    <div class="sheet-body">
+      <div class="stack" id="profMain">
+        <div class="prof-photo">
+          <span class="avatar lg" id="profAvatar"></span>
+          <div class="prof-photo-actions">
+            <button type="button" class="btn ghost sm" id="pickFotoBtn" data-act="pickFoto">Subir foto</button>
+            <button type="button" class="icon" id="quitarFotoBtn" data-act="quitarFoto" hidden>Quitar</button>
+          </div>
+          <input type="file" id="fotoInput" accept="image/jpeg,image/png,image/webp" hidden>
+        </div>
+        <form class="fields" id="profForm" data-form="perfil">
+          <label class="f">Nombre completo<input name="nombre" maxlength="60" autocomplete="name"></label>
+          <label class="f">Apodo (así te saludamos)<input name="apodo" maxlength="30" autocomplete="nickname"></label>
+          <label class="f">Teléfono<input name="telefono" type="tel" maxlength="20" autocomplete="tel"></label>
+          <label class="f">Fecha de nacimiento<input name="nacimiento" type="date" autocomplete="bday"></label>
+          <label class="f">Ciudad<input name="ciudad" maxlength="60" autocomplete="address-level2"></label>
+          <button class="btn">Guardar perfil</button>
+        </form>
+        <div class="acct">
+          <div><span class="sub">Cuenta</span><br><span id="userEmail" class="status"></span></div>
+          <button type="button" class="btn ghost sm" data-act="logout">Cerrar sesión</button>
+        </div>
+      </div>
+      <div class="crop" id="cropBox" hidden>
+        <p class="sub">Arrastra la foto para encuadrarla y usa el control para acercar.</p>
+        <div class="crop-vp" id="cropVp"><img id="cropImg" alt=""></div>
+        <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1" aria-label="Acercar">
+        <div class="row-actions">
+          <button type="button" class="btn ghost" data-act="cropCancel">Cancelar</button>
+          <button type="button" class="btn" data-act="cropOk">Usar foto</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Primera vez: solo pide el nombre -->
+<div class="layer center" id="welcome" hidden>
+  <div class="backdrop"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="welTitle">
+    <div class="sheet-body">
+      <h2 id="welTitle">Te damos la bienvenida</h2>
+      <p class="sub">¿Cómo te llamas? Así te saludaremos. El resto de tu perfil lo puedes completar después.</p>
+      <form class="fields" data-form="bienvenida">
+        <label class="f">Tu nombre<input name="nombre" maxlength="60" autocomplete="given-name" data-autofocus></label>
+        <div class="row-actions">
+          <button type="button" class="btn ghost" data-act="skipWelcome">Ahora no</button>
+          <button class="btn">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="/config.js"></script>
