@@ -23,6 +23,7 @@
   --accent:#2f5bea; --accent-ink:#ffffff; --accent-soft:#e4ebfd; --accent-fg:#2f5bea;
   --good:#1e8e5a; --warn:#a8710d; --bad:#d64545;
   --good-soft:#ddf1e6; --warn-soft:#f8ecd0; --bad-soft:#fbe3e3;
+  --exp:#c2410c; --exp-ink:#ffffff; --exp-soft:#fdebdd; --good-ink:#ffffff;
   --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
   --glass:rgba(255,255,255,.72);
   /* Tipografía del sistema: en iPhone y Mac es San Francisco; las cifras usan su versión redondeada (ui-rounded) */
@@ -37,6 +38,7 @@
   --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52; --accent-fg:#6c8cff;
   --good:#4cc78a; --warn:#e3a947; --bad:#f07878;
   --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;
+  --exp:#f4966f; --exp-ink:#2a0e03; --exp-soft:#3b2216; --good-ink:#06210f;
   color-scheme:dark;}}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="dark"]{
@@ -46,6 +48,7 @@
   --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52; --accent-fg:#6c8cff;
   --good:#4cc78a; --warn:#e3a947; --bad:#f07878;
   --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;
+  --exp:#f4966f; --exp-ink:#2a0e03; --exp-soft:#3b2216; --good-ink:#06210f;
   color-scheme:dark;}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
@@ -313,6 +316,28 @@ html.noscroll{overflow:hidden}
   .layer:not(.open) .sheet{transition-duration:160ms}
   .grab{display:none}
 }
+/* Movimientos: selector grande Gastos | Ingresos, con su color y su total */
+.modeseg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--sunk);border-radius:16px}
+.modeseg button{border:0;border-radius:12px;padding:12px 8px;background:transparent;color:var(--muted);font:600 1rem var(--f-display);letter-spacing:-.01em;cursor:pointer;transition:background-color 160ms ease,color 160ms ease,transform 120ms var(--ease-out)}
+.modeseg button:active{transform:scale(.97)}
+.modeseg .m-gasto[aria-pressed="true"]{background:var(--exp);color:var(--exp-ink)}
+.modeseg .m-ingreso[aria-pressed="true"]{background:var(--good);color:var(--good-ink)}
+.mov-hero{display:grid;gap:3px;border-radius:22px;padding:18px 20px 20px}
+.mov-hero.out{background:var(--exp-soft)}
+.mov-hero.in{background:var(--good-soft)}
+.mov-hero .lbl{font-size:.82rem;font-weight:600;color:var(--muted)}
+.mov-hero .val{font-family:var(--f-num);font-size:2.4rem;font-weight:600;line-height:1.1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mov-hero.out .val{color:var(--exp)}
+.mov-hero.in .val{color:var(--good)}
+.mov-hero .val .cur{font-size:.62em;font-weight:500;opacity:.55;margin-right:.14em;vertical-align:.16em;letter-spacing:0}
+.mov-hero .note{font-size:.8rem;line-height:1.35;color:var(--muted)}
+form.mf-out .btn{background:var(--exp);border-color:var(--exp);color:var(--exp-ink)}
+form.mf-in .btn{background:var(--good);border-color:var(--good);color:var(--good-ink)}
+.quickrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qbtn{border:0;border-radius:16px;padding:16px 10px;font:600 1rem var(--f-display);letter-spacing:-.01em;cursor:pointer;transition:transform 120ms var(--ease-out)}
+.qbtn:active{transform:scale(.97)}
+.q-gasto{background:var(--exp-soft);color:var(--exp)}
+.q-ingreso{background:var(--good-soft);color:var(--good)}
 /* Transición entre secciones: muy corta y apenas se desplaza */
 @keyframes tabInR{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
 @keyframes tabInL{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
@@ -396,6 +421,7 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   #app.go-r,#app.go-l{animation:tabFade 150ms ease}
   /* Con "reducir movimiento" las siluetas no se desplazan: solo respiran (cambian de tono muy despacio) */
   .fi{top:var(--y);transform:rotate(var(--r));will-change:auto;animation:breathe calc(var(--d) * .6) ease-in-out var(--t) infinite alternate}
+  .modeseg button:active,.qbtn:active{transform:none}
   .avatar-btn:active,.sw:active,.month-label:active,.today:active,.mcell:active{transform:none}
   .mpop,.mpop[hidden]{transform:translateX(var(--px));transition:opacity 150ms ease,visibility 0s 150ms}
   .mpop:not([hidden]){transition:opacity 150ms ease}

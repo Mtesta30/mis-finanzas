@@ -22,7 +22,7 @@ let sb=null, uid=null, ready=false, offline=false, pending=0;
 let cfg=defCfg(), months={};
 const today=new Date();
 let cur=mk(today), tab="resumen", movTipo="gasto", pendingRender=false;
-try{const t=localStorage.getItem("fin.tab"); if(t&&TABS.some(x=>x[0]===t)) tab=t;}catch(e){}
+try{const t=localStorage.getItem("fin.tab"); if(t&&TABS.some(x=>x[0]===t)) tab=t; if(localStorage.getItem("fin.mov")==="ingreso") movTipo="ingreso";}catch(e){}
 
 function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[],perfil:{nombre:"",apodo:"",telefono:"",nacimiento:"",ciudad:"",foto:"",omitido:false},apariencia:{tema:"auto",paleta:"azul",acento:""},categorias:{gasto:[],ingreso:[],ocultas:[]}};}
 function mk(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
@@ -176,17 +176,13 @@ function presCats(sp){
 
 function movForm(){
   const cats=movTipo==="ingreso"?ingresoCats():gastoCats();
-  const def=cur===mk(today)?today.toISOString().slice(0,10):cur+"-01";
-  return `<form class="row" data-form="mov">
-    <div class="seg" role="group" aria-label="Tipo">
-      <button type="button" data-act="tipo" data-id="gasto" aria-pressed="${movTipo==="gasto"}">Gasto</button>
-      <button type="button" data-act="tipo" data-id="ingreso" aria-pressed="${movTipo==="ingreso"}">Ingreso extra</button>
-    </div>
+  const def=cur===mk(today)?ymd(new Date()):cur+"-01";
+  return `<form class="row ${movTipo==="ingreso"?"mf-in":"mf-out"}" data-form="mov">
     <label class="f">Monto (COP)<input id="mv-monto" name="monto" inputmode="numeric" placeholder="45000" required></label>
     <label class="f">Categoría<select id="mv-cat" name="cat">${cats.map(c=>`<option>${esc(c)}</option>`).join("")}</select></label>
     <label class="f wide">Descripción<input id="mv-desc" name="desc" placeholder="${movTipo==="gasto"?"Almuerzo, Uber, mercado...":"Proyecto freelance, venta..."}"></label>
     <label class="f">Fecha<input id="mv-fecha" name="fecha" type="date" value="${def}"></label>
-    <button class="btn">Agregar</button>
+    <button class="btn">${movTipo==="ingreso"?"Agregar ingreso":"Agregar gasto"}</button>
   </form>`;
 }
 
@@ -254,7 +250,8 @@ function vResumen(){
   ${pendHTML()}
   ${remindersHTML()}
   ${kpis(cur)}
-  <section class="panel"><div><h2>Registrar movimiento</h2><p class="sub">Cada gasto o ingreso extra que tengas en ${mName(cur)}.</p></div>${movForm()}</section>
+  <section class="panel"><div><h2>Registrar</h2><p class="sub">Anota un movimiento de ${mName(cur)}.</p></div>
+    <div class="quickrow"><button type="button" class="qbtn q-gasto" data-act="goMov" data-id="gasto">Registrar gasto</button><button type="button" class="qbtn q-ingreso" data-act="goMov" data-id="ingreso">Registrar ingreso</button></div></section>
   <div class="grid2">
     <section class="panel"><div class="split"><h2>Pagos fijos</h2><span class="chip ${pend.length?"warn":"good"}">${cfg.fijos.length?(pend.length?pend.length+" pendientes":"Todos pagados"):"Sin pagos fijos"}</span></div>
       ${cfg.fijos.length?`<ul class="list">${cfg.fijos.slice().sort((a,b)=>(a.dia||99)-(b.dia||99)).map(f=>fijoCheck(f,m)).join("")}</ul>`:`<div class="empty">Agrega tus pagos mensuales en la pestaña Pagos fijos.</div>`}
@@ -271,12 +268,22 @@ function vResumen(){
 function salForm(){return `<form class="row" data-form="salario"><label class="f">Salario neto mensual (COP)<input id="sal" name="salario" inputmode="numeric" value="${+cfg.salario||""}" placeholder="2500000" required></label><button class="btn">Guardar salario</button></form>`;}
 function fijoCheck(f,m){const p=!!m.pagados[f.id];return `<li><label class="check li-main"><input type="checkbox" data-act="pagar" data-id="${f.id}" ${p?"checked":""}><span><b>${esc(f.nombre)}</b><small>${esc(f.cat)}${f.dia?" · día "+f.dia:""}</small></span></label><span class="num">${money(f.monto)}</span><span class="chip ${p?"good":"warn"}">${p?"Pagado":"Pendiente"}</span></li>`;}
 
+/* Movimientos: un selector grande separa Gastos de Ingresos; cada modo tiene su color, su total, su formulario y su lista */
 function vMov(){
-  const m=month(cur);const movs=m.movs.slice().sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
-  return `${kpis(cur)}
-  <section class="panel"><div><h2>Registrar movimiento</h2></div>${movForm()}</section>
-  <section class="panel"><div class="split"><h2>Movimientos de ${mName(cur)}</h2><span class="status">${movs.length} registros</span></div>
-  ${movs.length?`<ul class="list">${movs.map(x=>`<li><div class="li-main"><b>${esc(x.desc||x.cat)}</b><small>${esc(x.cat)} · ${esc(x.fecha||"")}${x.tipo==="ahorro"?" · aporte a meta":""}</small></div><span class="num ${x.tipo==="ingreso"?"in":"out"}">${x.tipo==="ingreso"?"+":"-"}${money(x.monto)}</span><button class="icon" data-act="delMov" data-id="${x.id}">Borrar</button></li>`).join("")}</ul>`:`<div class="empty">No hay movimientos en este mes. Registra el primero con el formulario de arriba.</div>`}
+  const m=month(cur),t=totals(cur),ing=movTipo==="ingreso";
+  const movs=m.movs.filter(x=>ing?x.tipo==="ingreso":x.tipo!=="ingreso").sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const total=ing?t.ingresos:t.gastos+t.ahorro;
+  const note=ing?`Salario ${money(t.salario)} + extras ${money(t.extra)}`:`Variables ${money(t.gastos)}${t.ahorro?` · aportes a metas ${money(t.ahorro)}`:""} · los pagos fijos están en su pestaña`;
+  const salRow=ing&&t.salario>0?`<li><div class="li-main"><b>Salario</b><small>${m.salarioMes!=null?"Ajustado para este mes":"Salario base"}</small></div><span class="num in">+${money(t.salario)}</span><span class="chip">Fijo</span></li>`:"";
+  const rows=movs.map(x=>`<li><div class="li-main"><b>${esc(x.desc||x.cat)}</b><small>${esc(x.cat)} · ${esc(x.fecha||"")}${x.tipo==="ahorro"?" · aporte a meta":""}</small></div><span class="num ${ing?"in":"out"}">${ing?"+":"-"}${money(x.monto)}</span><button class="icon" data-act="delMov" data-id="${x.id}">Borrar</button></li>`).join("");
+  return `<div class="modeseg" role="group" aria-label="Tipo de movimiento">
+    <button type="button" class="m-gasto" data-act="tipo" data-id="gasto" aria-pressed="${!ing}">Gastos</button>
+    <button type="button" class="m-ingreso" data-act="tipo" data-id="ingreso" aria-pressed="${ing}">Ingresos</button>
+  </div>
+  <section class="mov-hero ${ing?"in":"out"}"><span class="lbl">${ing?"Ingresos":"Gastos"} de ${mName(cur)}</span><span class="val">${moneyBig(total)}</span><span class="note">${note}</span></section>
+  <section class="panel"><div><h2>${ing?"Registrar ingreso":"Registrar gasto"}</h2>${ing?`<p class="sub">Ingresos extra al salario: freelance, ventas, bonificaciones.</p>`:""}</div>${movForm()}</section>
+  <section class="panel"><div class="split"><h2>${ing?"Ingresos":"Gastos"} de ${mName(cur)}</h2><span class="status">${movs.length+(salRow?1:0)} registros</span></div>
+  ${rows||salRow?`<ul class="list">${salRow}${rows}</ul>`:`<div class="empty">${ing?"Aún no hay ingresos en este mes.":"No hay gastos en este mes."} Registra el primero con el formulario de arriba.</div>`}
   </section>`;
 }
 
@@ -407,7 +414,13 @@ document.addEventListener("click",e=>{
     case "pickMonth":if(/^20\d\d-(0[1-9]|1[0-2])$/.test(id))cur=id;closeMonthPop(true);render();break;
     case "yearPrev":pickYear=Math.max(2000,pickYear-1);renderMonthPop();break;
     case "yearNext":pickYear=Math.min(2099,pickYear+1);renderMonthPop();break;
-    case "tipo":movTipo=id;render();break;
+    case "tipo":movTipo=id==="ingreso"?"ingreso":"gasto";try{localStorage.setItem("fin.mov",movTipo)}catch(_){ }
+      if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render();break;
+    case "goMov":{
+      movTipo=id==="ingreso"?"ingreso":"gasto";tab="movimientos";
+      try{localStorage.setItem("fin.mov",movTipo);localStorage.setItem("fin.tab",tab)}catch(_){ }
+      render();window.scrollTo(0,0);playTab("go-r");
+      setTimeout(()=>{const i=document.getElementById("mv-monto");if(i)i.focus({preventScroll:true});},60);break;}
     case "pagar":{const m=month(cur);m.pagados={...m.pagados};if(b.checked)m.pagados[id]=true;else delete m.pagados[id];months[cur]={...months[cur],...m};saveMonth(cur);render();break;}
     case "delMov":{if(!confirmClick(b))return;const m=month(cur);const x=m.movs.find(v=>v.id===id);if(!x)return;
       if(x.metaId){const g=cfg.metas.find(g=>g.id===x.metaId);if(g){g.ahorrado=Math.max(0,g.ahorrado-x.monto);saveCfg();}}
@@ -449,10 +462,10 @@ document.addEventListener("submit",e=>{
     case "fijo":{const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");cfg.fijos=[...cfg.fijos,{id:uidv(),nombre:fd.nombre.trim(),monto:v,cat:fd.cat,dia:parseInt(fd.dia)||null}];saveCfg();toast("Pago fijo agregado");break;}
     case "meta":{const v=num(fd.objetivo);if(v<=0)return toast("Escribe un objetivo mayor a cero.");cfg.metas=[...cfg.metas,{id:uidv(),nombre:fd.nombre.trim(),objetivo:v,ahorrado:0,fecha:fd.fecha||""}];saveCfg();toast("Meta creada");break;}
     case "aporte":{const v=num(fd.monto);if(v<=0)return toast("Escribe un aporte mayor a cero.");const g=cfg.metas.find(g=>g.id===id);if(!g)return;g.ahorrado+=v;saveCfg();
-      addMov(cur,{id:uidv(),tipo:"ahorro",monto:v,cat:"Ahorro",desc:"Aporte: "+g.nombre,fecha:cur===mk(today)?today.toISOString().slice(0,10):cur+"-01",metaId:g.id});toast("Aporte registrado");break;}
+      addMov(cur,{id:uidv(),tipo:"ahorro",monto:v,cat:"Ahorro",desc:"Aporte: "+g.nombre,fecha:cur===mk(today)?ymd(new Date()):cur+"-01",metaId:g.id});toast("Aporte registrado");break;}
     case "deuda":{const v=num(fd.saldo);if(v<=0)return toast("Escribe un saldo mayor a cero.");cfg.deudas=[...cfg.deudas,{id:uidv(),nombre:fd.nombre.trim(),saldo:v,inicial:v,cuota:num(fd.cuota),tasa:(fd.tasa||"").trim()}];saveCfg();toast("Deuda agregada");break;}
     case "abono":{const v=num(fd.monto);if(v<=0)return toast("Escribe un abono mayor a cero.");const d=cfg.deudas.find(d=>d.id===id);if(!d)return;d.saldo=Math.max(0,d.saldo-v);saveCfg();
-      addMov(cur,{id:uidv(),tipo:"gasto",monto:v,cat:"Deudas",desc:"Abono: "+d.nombre,fecha:cur===mk(today)?today.toISOString().slice(0,10):cur+"-01",deudaId:d.id});toast("Abono registrado");break;}
+      addMov(cur,{id:uidv(),tipo:"gasto",monto:v,cat:"Deudas",desc:"Abono: "+d.nombre,fecha:cur===mk(today)?ymd(new Date()):cur+"-01",deudaId:d.id});toast("Abono registrado");break;}
   }
   f.reset();document.activeElement&&document.activeElement.blur();render();
 });
