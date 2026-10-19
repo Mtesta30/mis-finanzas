@@ -22,9 +22,7 @@
   --fg:#1b1f2a; --muted:#6b7280;
   --accent:#2f5bea; --accent-ink:#ffffff; --accent-soft:#e4ebfd; --accent-fg:#2f5bea;
   --good:#1e8e5a; --warn:#a8710d; --bad:#d64545;
-  --good-soft:#ddf1e6; --warn-soft:#f8ecd0; --bad-soft:#fbe3e3;
-  --exp:#c2410c; --exp-ink:#ffffff; --exp-soft:#fdebdd; --good-ink:#ffffff;
-  --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  --good-soft:#ddf1e6; --warn-soft:#f8ecd0; --bad-soft:#fbe3e3;  --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
   --glass:rgba(255,255,255,.72);
   /* Tipografía del sistema: en iPhone y Mac es San Francisco; las cifras usan su versión redondeada (ui-rounded) */
   --f-display:-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
@@ -37,9 +35,7 @@
   --fg:#eceef3; --muted:#9aa1b2;
   --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52; --accent-fg:#6c8cff;
   --good:#4cc78a; --warn:#e3a947; --bad:#f07878;
-  --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;
-  --exp:#f4966f; --exp-ink:#2a0e03; --exp-soft:#3b2216; --good-ink:#06210f;
-  color-scheme:dark;}}
+  --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;  color-scheme:dark;}}
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="dark"]{
   --glass:rgba(28,31,40,.72);
@@ -47,9 +43,7 @@
   --fg:#eceef3; --muted:#9aa1b2;
   --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52; --accent-fg:#6c8cff;
   --good:#4cc78a; --warn:#e3a947; --bad:#f07878;
-  --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;
-  --exp:#f4966f; --exp-ink:#2a0e03; --exp-soft:#3b2216; --good-ink:#06210f;
-  color-scheme:dark;}
+  --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;  color-scheme:dark;}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
@@ -320,24 +314,17 @@ html.noscroll{overflow:hidden}
 .modeseg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--sunk);border-radius:16px}
 .modeseg button{border:0;border-radius:12px;padding:12px 8px;background:transparent;color:var(--muted);font:600 1rem var(--f-display);letter-spacing:-.01em;cursor:pointer;transition:background-color 160ms ease,color 160ms ease,transform 120ms var(--ease-out)}
 .modeseg button:active{transform:scale(.97)}
-.modeseg .m-gasto[aria-pressed="true"]{background:var(--exp);color:var(--exp-ink)}
-.modeseg .m-ingreso[aria-pressed="true"]{background:var(--good);color:var(--good-ink)}
-.mov-hero{display:grid;gap:3px;border-radius:22px;padding:18px 20px 20px}
-.mov-hero.out{background:var(--exp-soft)}
-.mov-hero.in{background:var(--good-soft)}
+/* Gastos e Ingresos usan el color que elegiste en el perfil; se distinguen por el título, el signo y el texto del botón */
+.modeseg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.mov-hero{display:grid;gap:3px;border-radius:22px;padding:18px 20px 20px;background:var(--accent-soft)}
 .mov-hero .lbl{font-size:.82rem;font-weight:600;color:var(--muted)}
-.mov-hero .val{font-family:var(--f-num);font-size:2.4rem;font-weight:600;line-height:1.1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;white-space:nowrap}
-.mov-hero.out .val{color:var(--exp)}
-.mov-hero.in .val{color:var(--good)}
+.mov-hero .val{font-family:var(--f-num);font-size:2.4rem;font-weight:600;line-height:1.1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--accent-fg)}
 .mov-hero .val .cur{font-size:.62em;font-weight:500;opacity:.55;margin-right:.14em;vertical-align:.16em;letter-spacing:0}
 .mov-hero .note{font-size:.8rem;line-height:1.35;color:var(--muted)}
-form.mf-out .btn{background:var(--exp);border-color:var(--exp);color:var(--exp-ink)}
-form.mf-in .btn{background:var(--good);border-color:var(--good);color:var(--good-ink)}
 .quickrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .qbtn{border:0;border-radius:16px;padding:16px 10px;font:600 1rem var(--f-display);letter-spacing:-.01em;cursor:pointer;transition:transform 120ms var(--ease-out)}
 .qbtn:active{transform:scale(.97)}
-.q-gasto{background:var(--exp-soft);color:var(--exp)}
-.q-ingreso{background:var(--good-soft);color:var(--good)}
+.q-gasto,.q-ingreso{background:var(--accent-soft);color:var(--accent-fg)}
 /* Transición entre secciones: muy corta y apenas se desplaza */
 @keyframes tabInR{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
 @keyframes tabInL{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}

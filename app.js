@@ -177,7 +177,7 @@ function presCats(sp){
 function movForm(){
   const cats=movTipo==="ingreso"?ingresoCats():gastoCats();
   const def=cur===mk(today)?ymd(new Date()):cur+"-01";
-  return `<form class="row ${movTipo==="ingreso"?"mf-in":"mf-out"}" data-form="mov">
+  return `<form class="row" data-form="mov">
     <label class="f">Monto (COP)<input id="mv-monto" name="monto" inputmode="numeric" placeholder="45000" required></label>
     <label class="f">Categoría<select id="mv-cat" name="cat">${cats.map(c=>`<option>${esc(c)}</option>`).join("")}</select></label>
     <label class="f wide">Descripción<input id="mv-desc" name="desc" placeholder="${movTipo==="gasto"?"Almuerzo, Uber, mercado...":"Proyecto freelance, venta..."}"></label>
