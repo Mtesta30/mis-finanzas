@@ -2,8 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#2f5bea">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1c1f28">
 <meta name="description" content="Control personal de ingresos, gastos, pagos fijos, presupuestos, metas y deudas.">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" href="/icons/icon-192.png">
@@ -23,11 +25,14 @@
   --accent:#2f5bea; --accent-ink:#ffffff; --accent-soft:#e4ebfd;
   --good:#1e8e5a; --warn:#a8710d; --bad:#d64545;
   --good-soft:#ddf1e6; --warn-soft:#f8ecd0; --bad-soft:#fbe3e3;
+  --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  --glass:rgba(255,255,255,.72);
   --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-num:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --glass:rgba(28,31,40,.72);
   --bg:#12141a; --surface:#1c1f28; --sunk:#171a21; --line:#2a2e3a;
   --fg:#eceef3; --muted:#9aa1b2;
   --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52;
@@ -35,6 +40,7 @@
   --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;
   color-scheme:dark;}}
 :root[data-theme="dark"]{
+  --glass:rgba(28,31,40,.72);
   --bg:#12141a; --surface:#1c1f28; --sunk:#171a21; --line:#2a2e3a;
   --fg:#eceef3; --muted:#9aa1b2;
   --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52;
@@ -45,32 +51,41 @@
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
 .wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-header.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+header.top{background:var(--surface);border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+/* Vidrio esmerilado: el contenido se ve difuminado al pasar por debajo de la barra de arriba */
+@supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
+  body::before,header.top{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
+}
+@media (prefers-reduced-transparency:reduce){
+  body::before,header.top{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
 .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 6px;flex-wrap:wrap}
-h1{font-family:var(--f-display);font-size:1.5rem;margin:0;letter-spacing:-.01em}
+/* Espaciado de letras como Apple: más junto cuanto más grande, un poco más abierto cuanto más pequeño */
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+h1{font-family:var(--f-display);font-size:1.5rem;line-height:1.1;margin:0;letter-spacing:-.022em;font-optical-sizing:auto}
 .month{display:flex;align-items:center;gap:6px}
-.month strong{font-family:var(--f-display);font-size:1.05rem;min-width:9.5em;text-align:center}
+.month strong{font-family:var(--f-display);font-size:1.05rem;letter-spacing:-.012em;min-width:9.5em;text-align:center}
 nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding-bottom:0}
 nav.tabs::-webkit-scrollbar{display:none}
 .tab{background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:500 .92rem var(--f-body);padding:10px 12px;cursor:pointer;white-space:nowrap}
 .tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
 main{padding-block:20px 48px;display:grid;gap:20px}
-h2{font-family:var(--f-display);font-size:1.15rem;margin:0 0 4px;text-wrap:balance}
-.sub{color:var(--muted);font-size:.88rem;margin:0}
+h2{font-family:var(--f-display);font-size:1.15rem;line-height:1.25;margin:0 0 4px;text-wrap:balance;letter-spacing:-.014em;font-optical-sizing:auto}
+.sub{color:var(--muted);font-size:.88rem;margin:0;letter-spacing:.006em}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px;min-width:0}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:20px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:2px}
 .kpi .lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.kpi .val{font-family:var(--f-num);font-size:1.45rem;font-variant-numeric:tabular-nums}
-.kpi .note{font-size:.82rem;color:var(--muted)}
+.kpi .val{font-family:var(--f-num);font-size:1.45rem;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .note{font-size:.82rem;color:var(--muted);letter-spacing:.008em}
 .kpi.hero{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .kpi.hero .lbl,.kpi.hero .note{color:var(--accent-ink);opacity:.85}
 .kpi.neg{background:var(--bad-soft);border-color:var(--bad)}
 .kpi.neg .val{color:var(--bad)}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
 form.row{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
-label.f{display:grid;gap:3px;font-size:.78rem;color:var(--muted);flex:1 1 130px;min-width:0}
+label.f{display:grid;gap:3px;font-size:.78rem;letter-spacing:.01em;color:var(--muted);flex:1 1 130px;min-width:0}
 label.f.wide{flex:2 1 200px}
 input,select{font:inherit;font-size:.95rem;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0}
 input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -78,8 +93,11 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .btn.ghost{background:transparent;color:var(--accent)}
 .btn.sm{padding:5px 10px;font-size:.82rem}
 .icon{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:4px 9px;cursor:pointer;font:500 .8rem var(--f-body)}
-.icon:hover{color:var(--fg);border-color:var(--muted)}
+@media (hover:hover) and (pointer:fine){.icon:hover{color:var(--fg);border-color:var(--muted)}}
 .icon.armed{background:var(--bad);border-color:var(--bad);color:#fff}
+/* Los botones se hunden un poco en cuanto se tocan y vuelven rápido al soltar */
+.btn,.icon,.tab,.seg button{transition:transform 120ms var(--ease-out)}
+.btn:active,.icon:active,.tab:active,.seg button:active{transform:scale(.97)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
 .seg button{border:0;background:var(--bg);color:var(--muted);font:500 .88rem var(--f-body);padding:8px 12px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
@@ -119,7 +137,14 @@ th,td{text-align:right;padding:8px 6px;border-top:1px solid var(--line);white-sp
 th:first-child,td:first-child{text-align:left;text-transform:capitalize}
 th{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;border-top:0}
 .notice{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:12px 14px;font-size:.9rem}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.88rem;z-index:20;max-width:calc(100% - 32px)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.88rem;z-index:20;max-width:calc(100% - 32px);
+  transition:opacity 220ms var(--ease-out),transform 220ms var(--ease-out)}
+/* El aviso sube desde abajo al entrar y se va más rápido de lo que llegó */
+.toast[hidden]{display:block!important;opacity:0;transform:translate(-50%,12px);visibility:hidden;pointer-events:none;
+  transition:opacity 140ms var(--ease-out),transform 140ms var(--ease-out),visibility 0s 140ms}
+/* Botón de borrar: el texto "Confirmar" no empuja a los vecinos y el rojo entra suave */
+.icon{transition:transform 120ms var(--ease-out),background-color 150ms ease,border-color 150ms ease,color 150ms ease}
+.icon[data-act^="del"]{min-width:6.2em}
 .status{font-size:.78rem;color:var(--muted)}
 @media (prefers-reduced-motion:no-preference){.bar>i{transition:width .3s ease}}
 
@@ -131,7 +156,14 @@ img{max-width:100%}
 /* cuenta */
 .user{display:flex;align-items:center;gap:8px;min-width:0}
 .user .status{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:14em}
-.auth{min-height:80vh;display:grid;place-items:center;padding-block:32px}
+.auth{min-height:80vh;min-height:80dvh;display:grid;place-items:center;padding-block:32px}
+/* Sensación de app en el celular */
+html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{overscroll-behavior:none}
+button,a,[role="button"],label.check,select,summary{touch-action:manipulation}
+button,[role="button"]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* iPhone hace zoom al escribir si el texto del campo mide menos de 16 px */
+@media (pointer:coarse){input,select,.budget input{font-size:16px}}
 .auth-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px;display:grid;gap:16px}
 .auth-card h1{font-size:1.8rem}
 .auth-card form{display:grid;gap:12px}
@@ -140,6 +172,18 @@ img{max-width:100%}
 .msg{font-size:.88rem;border-radius:8px;padding:10px 12px}
 .msg.err{background:var(--bad-soft);color:var(--bad)}
 .msg.ok{background:var(--good-soft);color:var(--good)}
+/* Movimiento reducido: sin hundimientos ni deslizamientos; quedan solo cambios suaves de color y transparencia */
+@media (prefers-reduced-motion:reduce){
+  .btn:active,.icon:active,.tab:active,.seg button:active{transform:none}
+  .btn,.icon,.tab,.seg button{transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease}
+  .toast,.toast[hidden]{transform:translateX(-50%);transition:opacity 150ms ease,visibility 0s 150ms}
+  .toast:not([hidden]){transition:opacity 150ms ease}
+}
+/* Más contraste: bordes definidos y barra casi sólida */
+@media (prefers-contrast:more){
+  :root{--line:#8a8f9c}
+  header.top,body::before{background:var(--surface)}
+}
 </style>
 </head>
 <body>
