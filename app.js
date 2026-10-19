@@ -1,7 +1,20 @@
 // Mis Finanzas - lógica de la app
 const CATS=["Vivienda","Servicios","Comida","Transporte","Salud","Educación","Entretenimiento","Ropa","Suscripciones","Deudas","Ahorro","Otros"];
 const INCATS=["Salario extra","Freelance","Ventas","Bonificación","Intereses","Otros"];
-const TABS=[["resumen","Resumen"],["movimientos","Movimientos"],["fijos","Pagos fijos"],["presupuestos","Presupuestos"],["metas","Metas de ahorro"],["deudas","Deudas"],["historial","Historial"]];
+/* [id, nombre, nombre corto para la barra inferior]. En el celular solo las 4 primeras van a la vista; el resto, en "Más". */
+const TABS=[["resumen","Resumen"],["movimientos","Movimientos"],["presupuestos","Presupuestos"],["metas","Metas de ahorro","Metas"],["fijos","Pagos fijos"],["deudas","Deudas"],["historial","Historial"]];
+const MORE=["fijos","deudas","historial"];
+const ICONS={
+  resumen:'<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+  movimientos:'<path d="M7 4v14m0 0l-3-3m3 3l3-3M17 20V6m0 0l-3 3m3-3l3 3"/>',
+  presupuestos:'<path d="M21 12A9 9 0 1 1 12 3"/><path d="M12 3v9h9"/>',
+  metas:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  fijos:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  deudas:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
+  historial:'<path d="M5 20V10M12 20V4M19 20v-7"/>',
+  mas:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'
+};
+const svg=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
 let sb=null, uid=null, ready=false, offline=false, pending=0;
 let cfg=defCfg(), months={};
 const today=new Date();
@@ -112,7 +125,10 @@ function cleanMonth(m){
 
 /* ---------- render ---------- */
 function renderTabs(){
-  document.getElementById("tabs").innerHTML=TABS.map(([id,l])=>`<button class="tab" role="tab" aria-selected="${id===tab}" data-act="tab" data-id="${id}">${l}</button>`).join("");
+  const cur_=id=>id===tab?' aria-current="page"':"";
+  document.getElementById("tabs").innerHTML=`<div class="side-brand" aria-hidden="true">Mis Finanzas</div>`
+    +TABS.map(([id,l,s])=>`<button class="tab" type="button" data-act="tab" data-id="${id}" data-grp="${MORE.includes(id)?"more":"main"}"${cur_(id)}>${svg(id)}<span class="lb-long">${l}</span><span class="lb-short">${s||l}</span></button>`).join("")
+    +`<button class="tab more-btn" type="button" data-act="more" aria-haspopup="dialog"${MORE.includes(tab)?' aria-current="page"':""}>${svg("mas")}<span class="lb-short">Más</span></button>`;
   const ml=mName(cur);document.getElementById("monthLabel").textContent=ml.charAt(0).toUpperCase()+ml.slice(1);
   document.querySelector('[data-act="today"]').classList.toggle("show",cur!==mk(today));
 }
@@ -229,6 +245,7 @@ function vFijos(){
 function vPres(){
   const sp=spentByCat(cur);const totLim=sum(Object.values(cfg.presupuestos));
   return `<section class="panel"><div class="split"><div><h2>Presupuesto por categoría</h2><p class="sub">Pon un límite mensual a cada categoría. Incluye pagos fijos y gastos variables de ${mName(cur)}.</p></div><span class="num">Límite total ${money(totLim)}</span></div>
+  <div><button type="button" class="btn ghost sm" data-act="openCats">Administrar categorías</button></div>
   <div>${presCats(sp).map(c=>{const v=sp[c]||0, lim=+cfg.presupuestos[c]||0;const st=lim?(v>lim?"bad":v>lim*.85?"warn":"good"):"";
     return `<div class="budget"><div class="hd"><span><b>${esc(c)}</b>${lim?`<span class="chip ${st}">${v>lim?"Excedido por "+money(v-lim):v>lim*.85?"Cerca del límite":"Restan "+money(lim-v)}</span>`:""}</span>
     <span style="display:flex;gap:8px;align-items:center"><span class="num">${money(v)}</span><input id="pr-${esc(c)}" data-pres="${esc(c)}" inputmode="numeric" placeholder="Límite" value="${lim||""}" aria-label="Límite para ${esc(c)}"></span></div>
@@ -277,6 +294,7 @@ function vHist(){
   const ks=[];for(let i=5;i>=0;i--)ks.push(shift(cur,-i));
   const ts=ks.map(totals);const max=Math.max(1,...ts.map(t=>Math.max(t.ingresos,t.egresos)));
   return `<section class="panel"><div class="split"><div><h2>Últimos 6 meses</h2><p class="sub">Ingresos frente a egresos hasta ${mName(cur)}.</p></div><div class="legend"><span>Ingresos</span><span class="o">Egresos</span></div></div>
+  <div><button type="button" class="btn ghost sm" data-act="openExport">Exportar mis datos</button></div>
   <div class="chart">${ts.map((t,i)=>`<div class="col" title="${mName(ks[i])}"><i class="ci" style="height:${t.ingresos/max*100}%"></i><i class="co" style="height:${t.egresos/max*100}%"></i></div>`).join("")}</div>
   <div class="xl">${ks.map(k=>`<span>${mName(k,true)}</span>`).join("")}</div>
   <div class="tbl"><table><thead><tr><th>Mes</th><th>Ingresos</th><th>Egresos</th><th>Ahorro</th><th>Balance</th></tr></thead><tbody>
@@ -307,7 +325,14 @@ document.addEventListener("click",e=>{
     case "paleta":setLook({paleta:id});break;
     case "resetLook":cfg.apariencia={tema:"auto",paleta:"azul",acento:""};applyLook();saveCfg();toast("Colores restablecidos");break;
     case "skipWelcome":cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));break;
-    case "tab":tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }render();window.scrollTo(0,0);break;
+    case "tab":if(!TABS.some(x=>x[0]===id))break;tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }closeLayer($("moreSheet"));render();window.scrollTo(0,0);break;
+    case "more":openMore(b);break;
+    case "closeLayer":{const el=$(id||"x");if(el&&el.classList.contains("layer"))closeLayer(el);break;}
+    case "openCats":renderCatList();openLayer($("catSheet"),b);break;
+    case "openExport":fillExportRange();openLayer($("expSheet"),b);break;
+    case "openPass":openPass();break;
+    case "passBack":closePass();break;
+    case "eye":toggleEye(b);break;
     case "prevMonth":closeMonthPop();if(cur>"2000-01"){cur=shift(cur,-1);render();}break;
     case "nextMonth":closeMonthPop();if(cur<"2099-12"){cur=shift(cur,1);render();}break;
     case "today":closeMonthPop();cur=mk(today);render();break;
@@ -408,8 +433,8 @@ $("authForm").addEventListener("submit",async e=>{
   }finally{btn.disabled=false;}
 });
 
-function showAuth(){ $("topbar").hidden=true;$("appView").hidden=true;$("authView").hidden=false; }
-function showApp(){ $("authView").hidden=true;$("topbar").hidden=false;$("appView").hidden=false; }
+function showAuth(){ $("topbar").hidden=true;$("tabs").hidden=true;$("appView").hidden=true;$("authView").hidden=false; }
+function showApp(){ $("authView").hidden=true;$("topbar").hidden=false;$("tabs").hidden=false;$("appView").hidden=false; }
 function setSession(session){
   if(session&&session.user){
     if(authMode==="reset")return;
@@ -461,20 +486,20 @@ const layerTimers=new WeakMap();let layerOpener=null;
 function openLayer(el,opener){
   clearTimeout(layerTimers.get(el));layerOpener=opener||null;
   el.hidden=false;void el.offsetWidth;el.classList.add("open");
-  document.documentElement.classList.add("noscroll");$("topbar").inert=true;$("appView").inert=true;
+  document.documentElement.classList.add("noscroll");$("topbar").inert=true;$("appView").inert=true;$("tabs").inert=true;
   const f=el.querySelector("[data-autofocus]");if(f)f.focus({preventScroll:true});
 }
 function closeLayer(el){
   if(el.hidden||!el.classList.contains("open"))return;
   el.classList.remove("open");
   layerTimers.set(el,setTimeout(()=>{el.hidden=true;},300));
-  document.documentElement.classList.remove("noscroll");$("topbar").inert=false;$("appView").inert=false;
+  document.documentElement.classList.remove("noscroll");$("topbar").inert=false;$("appView").inert=false;$("tabs").inert=false;
   if(layerOpener&&layerOpener.focus)layerOpener.focus({preventScroll:true});layerOpener=null;
 }
 function resetLayers(){
-  ["profileSheet","welcome"].forEach(id=>{const el=$(id);clearTimeout(layerTimers.get(el));el.classList.remove("open");el.hidden=true;});
-  document.documentElement.classList.remove("noscroll");$("topbar").inert=false;$("appView").inert=false;
-  crop.img=null;$("cropBox").hidden=true;$("profMain").hidden=false;
+  document.querySelectorAll(".layer").forEach(el=>{clearTimeout(layerTimers.get(el));el.classList.remove("open");el.hidden=true;});
+  document.documentElement.classList.remove("noscroll");$("topbar").inert=false;$("appView").inert=false;$("tabs").inert=false;
+  crop.img=null;$("cropBox").hidden=true;$("passBox").hidden=true;$("profMain").hidden=false;
 }
 /* selector de meses: cuadrícula de 12 meses que sale de la píldora */
 let pickYear=0,popOpen=false;
@@ -504,7 +529,9 @@ document.addEventListener("keydown",e=>{
   if(e.key!=="Escape")return;
   if(popOpen){closeMonthPop(true);return;}
   if(!$("cropBox").hidden){cancelCrop();return;}
-  if($("profileSheet").classList.contains("open"))closeLayer($("profileSheet"));
+  if(!$("passBox").hidden){closePass();return;}
+  const sheet=document.querySelector(".layer.open:not(.center)");
+  if(sheet)closeLayer(sheet);
   else if($("welcome").classList.contains("open")){cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));}
 });
 
@@ -518,7 +545,7 @@ function openProfile(opener){
   const f=$("profForm");
   PROF_FIELDS.forEach(k=>{f.elements[k].value=cfg.perfil[k]||"";});
   f.elements.nacimiento.max=new Date().toISOString().slice(0,10);
-  $("cropBox").hidden=true;$("profMain").hidden=false;updateProfPhotoUI();renderCatList();fillExportRange();
+  $("cropBox").hidden=true;$("passBox").hidden=true;$("profMain").hidden=false;updateProfPhotoUI();
   openLayer($("profileSheet"),opener);
 }
 function maybeWelcome(){
@@ -528,8 +555,8 @@ function maybeWelcome(){
 }
 
 /* cerrar la hoja arrastrándola hacia abajo (solo en pantallas angostas) */
-(function(){
-  const layer=$("profileSheet"),sheet=layer.querySelector(".sheet"),head=layer.querySelector(".sheet-head");
+document.querySelectorAll(".layer:not(.center)").forEach(layer=>{
+  const sheet=layer.querySelector(".sheet"),head=layer.querySelector(".sheet-head");
   let d=null;
   head.addEventListener("pointerdown",e=>{
     if(!matchMedia("(max-width:699px)").matches||e.target.closest("button"))return;
@@ -546,7 +573,7 @@ function maybeWelcome(){
     if(shut)closeLayer(layer);
   };
   head.addEventListener("pointerup",end);head.addEventListener("pointercancel",end);
-})();
+});
 
 /* foto: se elige, se encuadra dentro de un círculo y se guarda reducida (256 px) */
 const crop={img:null,w:0,h:0,base:1,zoom:1,x:0,y:0,vp:260};
@@ -742,17 +769,58 @@ function exportJson(){
   saveFile("mis-finanzas-respaldo-"+new Date().toISOString().slice(0,10)+".json","application/json",JSON.stringify(data,null,2));
 }
 
+/* pantalla "Cambiar contraseña" dentro del perfil: ojito, medidor de fortaleza y requisitos que se marcan */
+const EYE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+document.querySelectorAll(".eye").forEach(b=>{b.innerHTML=EYE;});
+function pwScore(p){
+  if(!p)return 0;
+  let s=0;if(p.length>=8)s++;if(p.length>=12)s++;
+  if(/[A-Za-z]/.test(p)&&/\d/.test(p))s++;
+  if(/[^A-Za-z0-9]/.test(p)||(/[a-z]/.test(p)&&/[A-Z]/.test(p)))s++;
+  return Math.min(4,s);
+}
+function pwOk(){
+  const p1=$("p1").value,p2=$("p2").value;
+  return {len:p1.length>=8,mix:/[A-Za-z]/.test(p1)&&/\d/.test(p1),same:p1.length>0&&p1===p2};
+}
+function updatePass(){
+  const p1=$("p1").value,ok=pwOk(),sc=pwScore(p1);
+  document.querySelector("#passForm .meter").dataset.s=sc;
+  $("pwLabel").textContent=p1?"Seguridad: "+["muy débil","débil","aceptable","buena","fuerte"][sc]:"Escribe una contraseña";
+  document.querySelectorAll("#pwReqs li").forEach(li=>li.classList.toggle("ok",ok[li.dataset.req]));
+  $("passSave").disabled=!(ok.len&&ok.mix&&ok.same);
+}
+function toggleEye(b){
+  const inp=$(b.dataset.id),show=inp.type==="password";
+  inp.type=show?"text":"password";b.setAttribute("aria-pressed",String(show));b.setAttribute("aria-label",show?"Ocultar contraseña":"Mostrar contraseña");
+}
+function resetPassForm(){
+  $("passForm").reset();
+  document.querySelectorAll("#passForm .eye").forEach(b=>{$(b.dataset.id).type="password";b.setAttribute("aria-pressed","false");b.setAttribute("aria-label","Mostrar contraseña");});
+  updatePass();
+}
+function openPass(){resetPassForm();$("profMain").hidden=true;$("passBox").hidden=false;$("p1").focus({preventScroll:true});}
+function closePass(){resetPassForm();$("passBox").hidden=true;$("profMain").hidden=false;}
+$("p1").addEventListener("input",updatePass);$("p2").addEventListener("input",updatePass);
 async function changePassword(f,fd){
-  const p1=String(fd.p1||""),p2=String(fd.p2||"");
-  if(p1.length<6)return toast("La contraseña debe tener al menos 6 caracteres.");
-  if(p1!==p2)return toast("Las contraseñas no coinciden.");
+  const ok=pwOk();
+  if(!(ok.len&&ok.mix&&ok.same))return toast("Revisa los requisitos de la contraseña.");
   if(!sb)return;
-  const btn=f.querySelector("button");btn.disabled=true;
+  const btn=$("passSave");btn.disabled=true;
   try{
-    const {error}=await sb.auth.updateUser({password:p1});
-    if(error)toast(/different|same/i.test(error.message)?"Usa una contraseña distinta a la actual.":"No se pudo cambiar la contraseña. Inténtalo de nuevo.");
-    else{f.reset();toast("Contraseña actualizada");}
-  }finally{btn.disabled=false;}
+    const {error}=await sb.auth.updateUser({password:String(fd.p1)});
+    if(error){toast(/different|same/i.test(error.message)?"Usa una contraseña distinta a la actual.":"No se pudo cambiar la contraseña. Inténtalo de nuevo.");}
+    else{closePass();toast("Contraseña actualizada");}
+  }finally{updatePass();}
+}
+
+/* "Más secciones" (celular): pagos fijos, deudas e historial */
+function openMore(opener){
+  const m=month(cur),pend=cfg.fijos.filter(f=>!m.pagados[f.id]).length,saldo=sum(cfg.deudas.map(d=>d.saldo));
+  const rows=[["fijos","Pagos fijos",cfg.fijos.length?(pend?pend+(pend===1?" pendiente":" pendientes")+" este mes":"Todos pagados"):"Sin pagos fijos"],
+    ["deudas","Deudas",cfg.deudas.length?"Saldo total "+money(saldo):"Sin deudas"],["historial","Historial","Últimos 6 meses y exportar"]];
+  $("moreList").innerHTML=rows.map(([id,n,s])=>`<button type="button" class="morerow" data-act="tab" data-id="${id}">${svg(id)}<span class="nm">${n}<small>${esc(s)}</small></span><span class="chev" aria-hidden="true">&rsaquo;</span></button>`).join("");
+  openLayer($("moreSheet"),opener);
 }
 
 /* ---------- arranque ---------- */

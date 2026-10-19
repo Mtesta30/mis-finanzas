@@ -92,11 +92,34 @@ h1{font-family:var(--f-display);font-size:1.5rem;line-height:1.1;margin:0;letter
 .mcell.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .mcell .dot{position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:currentColor;opacity:.55}
 @media (min-width:561px){.mpop{--px:0;left:auto;right:0;transform-origin:100% 0}}
-nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding-bottom:0}
-nav.tabs::-webkit-scrollbar{display:none}
-.tab{background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:500 .92rem var(--f-body);padding:10px 12px;cursor:pointer;white-space:nowrap}
-.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
-main{padding-block:20px 48px;display:grid;gap:20px}
+/* Barra de secciones: abajo en el celular (estilo iOS), menú lateral en computadora */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:8;display:flex;justify-content:space-around;align-items:stretch;gap:2px;padding:6px max(8px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-right,0px));background:var(--surface);border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+@supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
+  .tabbar{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
+}
+@media (prefers-reduced-transparency:reduce){.tabbar{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
+.tab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:0;border-radius:12px;color:var(--muted);font:500 .68rem/1.1 var(--f-body);letter-spacing:.01em;padding:6px 2px 4px;cursor:pointer;white-space:nowrap}
+.tab svg{width:24px;height:24px;flex:none}
+.tab[aria-current="page"]{color:var(--accent-fg)}
+.tab .lb-long,.side-brand{display:none}
+.tab[data-grp="more"]{display:none}
+.tab.more-btn{display:flex}
+main{padding-block:20px calc(96px + env(safe-area-inset-bottom,0px));display:grid;gap:20px}
+.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))!important}
+@media (min-width:900px){
+  body{padding-left:224px}
+  .tabbar{left:0;right:auto;top:0;bottom:0;width:224px;flex-direction:column;justify-content:flex-start;gap:2px;padding:max(20px,env(safe-area-inset-top,0px)) 12px 20px;border-top:0;border-right:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+  .side-brand{display:block;font:700 1.15rem var(--f-display);letter-spacing:-.02em;padding:4px 12px 18px}
+  .tab{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;font:500 .94rem var(--f-body);letter-spacing:0;padding:10px 12px}
+  .tab .lb-long{display:inline}
+  .tab .lb-short{display:none}
+  .tab[data-grp="more"]{display:flex}
+  .tab.more-btn{display:none}
+  .tab[aria-current="page"]{background:var(--accent-soft)}
+  main{padding-block:20px 48px}
+  .toast{bottom:calc(16px + env(safe-area-inset-bottom,0px))!important}
+}
+@media (hover:hover) and (pointer:fine){.tab:hover{color:var(--fg)}}
 h2{font-family:var(--f-display);font-size:1.15rem;line-height:1.25;margin:0 0 4px;text-wrap:balance;letter-spacing:-.014em;font-optical-sizing:auto}
 .sub{color:var(--muted);font-size:.88rem;margin:0;letter-spacing:.006em}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px;min-width:0}
@@ -263,6 +286,44 @@ html.noscroll{overflow:hidden}
   .layer:not(.open) .sheet{transition-duration:160ms}
   .grab{display:none}
 }
+/* Perfil: sección Seguridad y pantalla de contraseña */
+.btn:disabled{opacity:.45;cursor:default}
+.sec{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
+.sec h3,.passbox h3{font-family:var(--f-display);font-size:1rem;margin:0 0 2px;letter-spacing:-.01em}
+.seccard{display:grid;background:var(--sunk);border-radius:14px;overflow:hidden}
+.secrow{display:flex;align-items:center;gap:12px;padding:12px 14px;background:none;border:0;color:var(--fg);text-align:left;width:100%;font:inherit}
+.secrow+.secrow{border-top:1px solid var(--line)}
+.secbtn{cursor:pointer}
+.secbtn:active{background:var(--line)}
+.secicon{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--surface);color:var(--accent-fg);flex:none}
+.secmain{display:grid;gap:1px;min-width:0;flex:1}
+.secval{font-weight:500;overflow-wrap:anywhere}
+.chev{color:var(--muted);font-size:1.5rem;line-height:1}
+.passbox{display:grid;gap:14px}
+.backbtn{justify-self:start;background:none;border:0;color:var(--accent-fg);font:500 .95rem var(--f-body);padding:4px 0;cursor:pointer}
+.pw{position:relative;display:block}
+.pw input{padding-right:48px}
+.eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:40px;height:34px;border:0;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center;border-radius:8px}
+.eye svg{width:20px;height:20px}
+.eye[aria-pressed="true"]{color:var(--accent-fg)}
+.meter{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.meter i{height:5px;border-radius:3px;background:var(--line);transition:background-color 180ms ease}
+.meter[data-s="1"] i:nth-child(-n+1){background:var(--bad)}
+.meter[data-s="2"] i:nth-child(-n+2){background:var(--warn)}
+.meter[data-s="3"] i:nth-child(-n+3),.meter[data-s="4"] i{background:var(--good)}
+.reqs{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:.88rem;color:var(--muted)}
+.reqs li{display:flex;align-items:center;gap:8px}
+.reqs li::before{content:"";width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);flex:none;background:center/10px no-repeat}
+.reqs li.ok{color:var(--fg)}
+.reqs li.ok::before{background-color:var(--good);border-color:var(--good);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+/* Más secciones */
+.morelist{display:grid;background:var(--sunk);border-radius:14px;overflow:hidden}
+.morerow{display:flex;align-items:center;gap:14px;padding:14px;background:none;border:0;color:var(--fg);text-align:left;width:100%;font:500 1rem var(--f-body);cursor:pointer}
+.morerow+.morerow{border-top:1px solid var(--line)}
+.morerow:active{background:var(--line)}
+.morerow svg{width:24px;height:24px;color:var(--accent-fg);flex:none}
+.morerow .nm{flex:1;display:grid;gap:1px}
+.morerow .nm small{color:var(--muted);font-weight:400;font-size:.82rem}
 /* Movimiento reducido: sin hundimientos ni deslizamientos; quedan solo cambios suaves de color y transparencia */
 @media (prefers-reduced-motion:reduce){
   .btn:active,.icon:active,.tab:active,.seg button:active{transform:none}
@@ -308,9 +369,9 @@ html.noscroll{overflow:hidden}
       </div>
       <div class="user"><button class="avatar-btn" data-act="openProfile" aria-label="Abrir tu perfil"><span class="avatar" id="topAvatar"></span></button></div>
     </div>
-    <nav class="tabs" role="tablist" id="tabs"></nav>
   </div>
 </header>
+<nav class="tabbar" id="tabs" aria-label="Secciones" hidden></nav>
 <div class="wrap" id="appView" hidden><main id="app"><div class="empty">Cargando tus datos...</div></main></div>
 <div class="wrap" id="authView"><main class="auth">
   <div class="auth-card">
@@ -371,43 +432,47 @@ html.noscroll{overflow:hidden}
           <p class="sub" id="lookNote" hidden>Ajustamos el tono en los textos para que se lean bien.</p>
           <div><button type="button" class="btn ghost sm" data-act="resetLook">Restablecer</button></div>
         </section>
-        <details class="acc" id="catAcc">
-          <summary>Categorías</summary>
-          <div class="acc-body">
-            <p class="sub">Oculta las que no uses o agrega las tuyas. Los movimientos anteriores conservan su categoría.</p>
-            <div id="catList"></div>
-            <form class="fields" data-form="cat">
-              <label class="f">Nueva categoría<input name="nombre" maxlength="30" autocomplete="off" required></label>
-              <label class="f">Tipo<select name="tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso extra</option></select></label>
-              <button class="btn">Agregar categoría</button>
-            </form>
-          </div>
-        </details>
-        <details class="acc">
-          <summary>Exportar mis datos</summary>
-          <div class="acc-body">
-            <p class="sub">Descarga tus movimientos para abrirlos en Excel, o un respaldo completo con tu configuración, metas y deudas.</p>
-            <label class="f">Qué exportar<select id="expRange"></select></label>
-            <div class="row-actions">
-              <button type="button" class="btn ghost sm" data-act="expCsv">Excel (CSV)</button>
-              <button type="button" class="btn ghost sm" data-act="expJson">Respaldo completo</button>
+        <section class="sec" aria-labelledby="secTitle">
+          <h3 id="secTitle">Seguridad</h3>
+          <div class="seccard">
+            <div class="secrow">
+              <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
+              <div class="secmain"><span class="sub">Correo de la cuenta</span><span class="secval" id="userEmail"></span></div>
             </div>
+            <button type="button" class="secrow secbtn" data-act="openPass">
+              <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+              <div class="secmain"><span class="secval">Contraseña</span><span class="sub">Cámbiala cuando quieras</span></div>
+              <span class="chev" aria-hidden="true">&rsaquo;</span>
+            </button>
           </div>
-        </details>
-        <details class="acc">
-          <summary>Cambiar contraseña</summary>
-          <div class="acc-body">
-            <form class="fields" data-form="pass">
-              <label class="f">Contraseña nueva<input name="p1" type="password" minlength="6" autocomplete="new-password" required></label>
-              <label class="f">Repite la contraseña<input name="p2" type="password" minlength="6" autocomplete="new-password" required></label>
-              <button class="btn">Cambiar contraseña</button>
-            </form>
-          </div>
-        </details>
+        </section>
         <div class="acct">
-          <div><span class="sub">Cuenta</span><br><span id="userEmail" class="status"></span></div>
+          <span class="sub">Sesión</span>
           <button type="button" class="btn ghost sm" data-act="logout">Cerrar sesión</button>
         </div>
+      </div>
+      <div class="passbox" id="passBox" hidden>
+        <button type="button" class="backbtn" data-act="passBack"><span aria-hidden="true">&lsaquo;</span> Perfil</button>
+        <div>
+          <h3>Cambiar contraseña</h3>
+          <p class="sub">Elige una contraseña que no uses en otros sitios.</p>
+        </div>
+        <form class="fields" id="passForm" data-form="pass" autocomplete="off">
+          <label class="f">Contraseña nueva
+            <span class="pw"><input name="p1" id="p1" type="password" autocomplete="new-password" required><button type="button" class="eye" data-act="eye" data-id="p1" aria-label="Mostrar contraseña" aria-pressed="false"></button></span>
+          </label>
+          <div class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <p class="sub" id="pwLabel">Escribe una contraseña</p>
+          <label class="f">Repite la contraseña
+            <span class="pw"><input name="p2" id="p2" type="password" autocomplete="new-password" required><button type="button" class="eye" data-act="eye" data-id="p2" aria-label="Mostrar contraseña" aria-pressed="false"></button></span>
+          </label>
+          <ul class="reqs" id="pwReqs">
+            <li data-req="len">8 o más caracteres</li>
+            <li data-req="mix">Combina letras y números</li>
+            <li data-req="same">Las dos coinciden</li>
+          </ul>
+          <button class="btn" id="passSave" disabled>Guardar contraseña</button>
+        </form>
       </div>
       <div class="crop" id="cropBox" hidden>
         <p class="sub">Arrastra la foto para encuadrarla y usa el control para acercar.</p>
@@ -417,6 +482,60 @@ html.noscroll{overflow:hidden}
           <button type="button" class="btn ghost" data-act="cropCancel">Cancelar</button>
           <button type="button" class="btn" data-act="cropOk">Usar foto</button>
         </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Más secciones (celular) -->
+<div class="layer" id="moreSheet" hidden>
+  <div class="backdrop" data-act="closeLayer" data-id="moreSheet"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="moreTitle">
+    <div class="sheet-head">
+      <span class="grab" aria-hidden="true"></span>
+      <h2 id="moreTitle">Más secciones</h2>
+      <button type="button" class="icon" data-act="closeLayer" data-id="moreSheet" data-autofocus>Cerrar</button>
+    </div>
+    <div class="sheet-body"><div class="morelist" id="moreList"></div></div>
+  </section>
+</div>
+
+<!-- Categorías (se abre desde Presupuestos) -->
+<div class="layer" id="catSheet" hidden>
+  <div class="backdrop" data-act="closeLayer" data-id="catSheet"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="catTitle">
+    <div class="sheet-head">
+      <span class="grab" aria-hidden="true"></span>
+      <h2 id="catTitle">Categorías</h2>
+      <button type="button" class="icon" data-act="closeLayer" data-id="catSheet" data-autofocus>Cerrar</button>
+    </div>
+    <div class="sheet-body">
+      <p class="sub">Oculta las que no uses o agrega las tuyas. Los movimientos anteriores conservan su categoría.</p>
+      <div id="catList"></div>
+      <form class="fields" data-form="cat">
+        <label class="f">Nueva categoría<input name="nombre" maxlength="30" autocomplete="off" required></label>
+        <label class="f">Tipo<select name="tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso extra</option></select></label>
+        <button class="btn">Agregar categoría</button>
+      </form>
+    </div>
+  </section>
+</div>
+
+<!-- Exportar (se abre desde Historial) -->
+<div class="layer" id="expSheet" hidden>
+  <div class="backdrop" data-act="closeLayer" data-id="expSheet"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="expTitle">
+    <div class="sheet-head">
+      <span class="grab" aria-hidden="true"></span>
+      <h2 id="expTitle">Exportar mis datos</h2>
+      <button type="button" class="icon" data-act="closeLayer" data-id="expSheet" data-autofocus>Cerrar</button>
+    </div>
+    <div class="sheet-body">
+      <p class="sub">Descarga tus movimientos para abrirlos en Excel, o un respaldo completo con tu configuración, metas y deudas.</p>
+      <label class="f">Qué exportar<select id="expRange"></select></label>
+      <div class="row-actions">
+        <button type="button" class="btn ghost" data-act="expCsv">Excel (CSV)</button>
+        <button type="button" class="btn" data-act="expJson">Respaldo completo</button>
       </div>
     </div>
   </section>
