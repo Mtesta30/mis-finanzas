@@ -15,8 +15,6 @@
 <meta name="apple-mobile-web-app-title" content="Mis Finanzas">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Mis Finanzas</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
 /* Layout: columna de trabajo de 980px; barra de pestañas fija arriba, cifras clave primero, detalle debajo */
 :root{
@@ -27,9 +25,10 @@
   --good-soft:#ddf1e6; --warn-soft:#f8ecd0; --bad-soft:#fbe3e3;
   --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
   --glass:rgba(255,255,255,.72);
-  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --f-num:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* Tipografía del sistema: en iPhone y Mac es San Francisco; las cifras usan su versión redondeada (ui-rounded) */
+  --f-display:-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --f-body:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --f-num:ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --glass:rgba(28,31,40,.72);
@@ -134,17 +133,29 @@ main{padding-block:20px calc(96px + env(safe-area-inset-bottom,0px));display:gri
 @media (hover:hover) and (pointer:fine){.tab:hover{color:var(--fg)}}
 h2{font-family:var(--f-display);font-size:1.15rem;line-height:1.25;margin:0 0 4px;text-wrap:balance;letter-spacing:-.014em;font-optical-sizing:auto}
 .sub{color:var(--muted);font-size:.88rem;margin:0;letter-spacing:.006em}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px;min-width:0}
+.panel{background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 60%,transparent);border-radius:18px;padding:20px;display:grid;gap:14px;min-width:0;box-shadow:0 1px 2px rgba(10,12,20,.04),0 10px 28px -16px rgba(10,12,20,.14)}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:20px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:2px}
-.kpi .lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.kpi .val{font-family:var(--f-num);font-size:1.45rem;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.kpi .note{font-size:.82rem;color:var(--muted);letter-spacing:.008em}
-.kpi.hero{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.kpi.hero .lbl,.kpi.hero .note{color:var(--accent-ink);opacity:.85}
-.kpi.neg{background:var(--bad-soft);border-color:var(--bad)}
+/* Widgets del Resumen: la cifra es la protagonista. En el celular, "Disponible" va primero y grande. */
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 60%,transparent);border-radius:22px;padding:16px 18px 18px;display:grid;gap:3px;align-content:start;min-width:0;box-shadow:0 1px 2px rgba(10,12,20,.04),0 12px 30px -16px rgba(10,12,20,.16)}
+.kpi .lbl{font-size:.82rem;font-weight:600;color:var(--muted);letter-spacing:0}
+.kpi .val{font-family:var(--f-num);font-size:1.55rem;font-weight:600;line-height:1.12;letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi .val .cur{font-size:.62em;font-weight:500;opacity:.55;margin-right:.14em;vertical-align:.16em;letter-spacing:0}
+.kpi .note{font-size:.8rem;line-height:1.35;color:var(--muted);letter-spacing:.005em}
+.kpi.hero,.kpi.neg{grid-column:1/-1;order:-1;padding:20px 22px 22px}
+.kpi.hero .val,.kpi.neg .val{font-size:2.6rem;letter-spacing:-.04em}
+.kpi:nth-child(3){grid-column:1/-1}
+.kpi.hero{background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,0) 55%),var(--accent);border-color:transparent;color:var(--accent-ink);box-shadow:0 14px 32px -14px var(--accent)}
+.kpi.hero .lbl,.kpi.hero .note{color:var(--accent-ink);opacity:.82}
+.kpi.neg{background:var(--bad-soft);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
 .kpi.neg .val{color:var(--bad)}
+@media (min-width:760px){
+  .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .kpi.hero,.kpi.neg{grid-column:auto;order:0;padding:16px 18px 18px}
+  .kpi.hero .val,.kpi.neg .val{font-size:1.75rem}
+  .kpi:nth-child(3){grid-column:auto}
+  .kpi .val{font-size:1.7rem}
+}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
 form.row{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
 label.f{display:grid;gap:3px;font-size:.78rem;letter-spacing:.01em;color:var(--muted);flex:1 1 130px;min-width:0}
@@ -302,6 +313,19 @@ html.noscroll{overflow:hidden}
   .layer:not(.open) .sheet{transition-duration:160ms}
   .grab{display:none}
 }
+/* Transición entre secciones: muy corta y apenas se desplaza */
+@keyframes tabInR{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+@keyframes tabInL{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+@keyframes tabFade{from{opacity:0}to{opacity:1}}
+#app.go-r{animation:tabInR 190ms var(--ease-out)}
+#app.go-l{animation:tabInL 190ms var(--ease-out)}
+/* Fondo del inicio de sesión: siluetas de monedas, billetes y tarjetas que flotan muy despacio */
+.bgf{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;filter:blur(1.6px)}
+.fi{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:auto;aspect-ratio:var(--a,1);color:var(--fg);fill:currentColor;opacity:.07;transform:rotate(var(--r));animation:floaty var(--d) ease-in-out var(--t) infinite alternate}
+@keyframes floaty{from{transform:translate3d(0,0,0) rotate(var(--r))}to{transform:translate3d(0,-24px,0) rotate(calc(var(--r) + 9deg))}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fi{opacity:.1}}
+:root[data-theme="dark"] .fi{opacity:.1}
+.auth-card{position:relative}
 /* Perfil: sección Seguridad y pantalla de contraseña */
 .btn:disabled{opacity:.45;cursor:default}
 .sec{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
@@ -348,6 +372,8 @@ html.noscroll{overflow:hidden}
   .toast:not([hidden]){transition:opacity 150ms ease}
   .acc summary::after{transition:none}
   html.railanim body,html.railanim .tabbar{transition:none}
+  #app.go-r,#app.go-l{animation:tabFade 150ms ease}
+  .fi{animation:none}
   .avatar-btn:active,.sw:active,.month-label:active,.today:active,.mcell:active{transform:none}
   .mpop,.mpop[hidden]{transform:translateX(var(--px));transition:opacity 150ms ease,visibility 0s 150ms}
   .mpop:not([hidden]){transition:opacity 150ms ease}
@@ -390,7 +416,30 @@ html.noscroll{overflow:hidden}
 </header>
 <nav class="tabbar" id="tabs" aria-label="Secciones" hidden></nav>
 <div class="wrap" id="appView" hidden><main id="app"><div class="empty">Cargando tus datos...</div></main></div>
-<div class="wrap" id="authView"><main class="auth">
+<div class="wrap" id="authView">
+<div class="bgf" aria-hidden="true">
+  <svg width="0" height="0" style="position:absolute" focusable="false"><defs>
+    <symbol id="s-coin" viewBox="0 0 100 100"><path fill-rule="evenodd" d="M50 4a46 46 0 1 0 0 92a46 46 0 1 0 0-92zm0 12a34 34 0 1 1 0 68a34 34 0 1 1 0-68z"/><rect x="45" y="30" width="10" height="40" rx="5"/></symbol>
+    <symbol id="s-bill" viewBox="0 0 160 90"><path fill-rule="evenodd" d="M12 6h136a10 10 0 0 1 10 10v58a10 10 0 0 1-10 10H12A10 10 0 0 1 2 74V16A10 10 0 0 1 12 6zm68 18a21 21 0 1 0 0 42a21 21 0 1 0 0-42zM20 22a8 8 0 1 0 0 16a8 8 0 1 0 0-16zm120 30a8 8 0 1 0 0 16a8 8 0 1 0 0-16z"/></symbol>
+    <symbol id="s-card" viewBox="0 0 160 100"><path fill-rule="evenodd" d="M14 4h132a12 12 0 0 1 12 12v68a12 12 0 0 1-12 12H14A12 12 0 0 1 2 84V16A12 12 0 0 1 14 4zM2 30h156v14H2zM18 62h28v18H18z"/></symbol>
+    <symbol id="s-wallet" viewBox="0 0 120 100"><path fill-rule="evenodd" d="M16 14h72a10 10 0 0 1 10 10v6h8a10 10 0 0 1 10 10v44a10 10 0 0 1-10 10H16A14 14 0 0 1 2 80V28a14 14 0 0 1 14-14zm74 40a7 7 0 1 0 0 14a7 7 0 1 0 0-14z"/></symbol>
+    <symbol id="s-bars" viewBox="0 0 100 100"><rect x="8" y="56" width="20" height="36" rx="5"/><rect x="40" y="32" width="20" height="60" rx="5"/><rect x="72" y="8" width="20" height="84" rx="5"/></symbol>
+    <symbol id="s-trend" viewBox="0 0 100 100"><path d="M6 78l30-30 20 18 38-44" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs></svg>
+  <svg class="fi" style="--x:6%;--y:4%;--s:72px;--r:-12deg;--d:19s;--t:-3s"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:70%;--y:6%;--s:150px;--a:1.78;--r:10deg;--d:23s;--t:-9s"><use href="#s-bill"/></svg>
+  <svg class="fi" style="--x:34%;--y:2%;--s:46px;--r:8deg;--d:16s;--t:-6s"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:-3%;--y:30%;--s:130px;--a:1.6;--r:14deg;--d:25s;--t:-12s"><use href="#s-card"/></svg>
+  <svg class="fi" style="--x:88%;--y:36%;--s:64px;--r:-6deg;--d:21s;--t:-5s"><use href="#s-bars"/></svg>
+  <svg class="fi" style="--x:80%;--y:56%;--s:140px;--a:1.78;--r:-14deg;--d:22s;--t:-14s"><use href="#s-bill"/></svg>
+  <svg class="fi" style="--x:8%;--y:60%;--s:100px;--a:1.2;--r:-8deg;--d:20s;--t:-8s"><use href="#s-wallet"/></svg>
+  <svg class="fi" style="--x:22%;--y:86%;--s:150px;--a:1.78;--r:9deg;--d:24s;--t:-4s"><use href="#s-bill"/></svg>
+  <svg class="fi" style="--x:58%;--y:84%;--s:58px;--r:12deg;--d:18s;--t:-11s"><use href="#s-coin"/></svg>
+  <svg class="fi" style="--x:76%;--y:82%;--s:96px;--r:6deg;--d:26s;--t:-7s"><use href="#s-trend"/></svg>
+  <svg class="fi" style="--x:44%;--y:70%;--s:120px;--a:1.6;--r:-10deg;--d:22s;--t:-16s"><use href="#s-card"/></svg>
+  <svg class="fi" style="--x:50%;--y:16%;--s:40px;--r:-4deg;--d:17s;--t:-2s"><use href="#s-coin"/></svg>
+</div>
+<main class="auth">
   <div class="auth-card">
     <div><h1>Mis Finanzas</h1><p class="sub" id="authSub">Inicia sesión para ver tus ingresos y gastos.</p></div>
     <div class="msg" id="authMsg" hidden></div>

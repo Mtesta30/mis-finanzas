@@ -31,7 +31,7 @@ Tabla `finanzas_docs (user_id, doc_id, data jsonb)`. Cada usuario tiene:
 
 ## Restricciones al rediseñar
 
-1. **CSP** (`vercel.json`): `script-src 'self' https://cdn.jsdelivr.net`. Nada de `<script>` en línea ni `onclick=`. Los estilos en línea sí están permitidos (`style-src 'unsafe-inline'`). Fuentes solo de Google Fonts. Si agregas otro origen externo, actualiza la CSP.
+1. **CSP** (`vercel.json`): `script-src 'self' https://cdn.jsdelivr.net`. Nada de `<script>` en línea ni `onclick=`. Los estilos en línea sí están permitidos (`style-src 'unsafe-inline'`). Las fuentes son las del sistema (San Francisco en Apple; ya no se carga nada de Google Fonts, y `font-src` es solo `'self'`). Si agregas otro origen externo, actualiza la CSP.
 2. La librería de Supabase se carga con **SRI** (`integrity=`). Si cambias su versión, recalcula el hash.
 3. Las vistas se generan en `app.js` (`vResumen`, `vMov`, `vFijos`, `vPres`, `vMetas`, `vDeudas`, `vHist`, `kpis`, `movForm`). El rediseño visual debería hacerse sobre todo en el CSS de `index.html`, cambiando markup de `app.js` solo cuando haga falta, sin tocar clases que usa la lógica: `data-act`, `data-form`, `data-id`, `data-pres` y los `id` de inputs y de `#app`, `#tabs`, `#authView`, `#appView`, `#topbar`.
 4. Mantener tema claro y oscuro: tokens en `:root`, redefinidos en `@media (prefers-color-scheme: dark)`.

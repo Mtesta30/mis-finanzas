@@ -148,14 +148,19 @@ function render(){
   app.innerHTML=({resumen:vResumen,movimientos:vMov,fijos:vFijos,presupuestos:vPres,metas:vMetas,deudas:vDeudas,historial:vHist})[tab]();
 }
 
+/* cifra grande con el símbolo $ más chico y apagado (solo para los widgets) */
+const moneyFmt=new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0});
+function moneyBig(n){
+  return moneyFmt.formatToParts(Math.round(n||0)).map(p=>p.type==="currency"?`<span class="cur">${esc(p.value)}</span>`:p.type==="literal"?"":esc(p.value)).join("");
+}
 function kpis(k){
   const t=totals(k);
   const pct=t.ingresos?Math.round((t.ahorro/t.ingresos)*100):0;
   return `<section class="kpis">
-    <div class="kpi"><span class="lbl">Ingresos del mes</span><span class="val">${money(t.ingresos)}</span><span class="note">Salario ${money(t.salario)} + otros ${money(t.extra)}</span></div>
-    <div class="kpi"><span class="lbl">Egresos</span><span class="val">${money(t.egresos)}</span><span class="note">Fijos ${money(t.fijos)} · variables ${money(t.gastos)}</span></div>
-    <div class="kpi"><span class="lbl">Ahorrado</span><span class="val">${money(t.ahorro)}</span><span class="note">${pct}% de tus ingresos</span></div>
-    <div class="kpi ${t.disp<0?"neg":"hero"}"><span class="lbl">Disponible</span><span class="val">${money(t.disp)}</span><span class="note">${t.disp<0?"Gastas más de lo que ganas este mes":"Lo que te queda para el resto del mes"}</span></div>
+    <div class="kpi"><span class="lbl">Ingresos del mes</span><span class="val">${moneyBig(t.ingresos)}</span><span class="note">Salario ${money(t.salario)} + otros ${money(t.extra)}</span></div>
+    <div class="kpi"><span class="lbl">Egresos</span><span class="val">${moneyBig(t.egresos)}</span><span class="note">Fijos ${money(t.fijos)} · variables ${money(t.gastos)}</span></div>
+    <div class="kpi"><span class="lbl">Ahorrado</span><span class="val">${moneyBig(t.ahorro)}</span><span class="note">${pct}% de tus ingresos</span></div>
+    <div class="kpi ${t.disp<0?"neg":"hero"}"><span class="lbl">Disponible</span><span class="val">${moneyBig(t.disp)}</span><span class="note">${t.disp<0?"Gastas más de lo que ganas este mes":"Lo que te queda para el resto del mes"}</span></div>
   </section>`;
 }
 
@@ -308,6 +313,9 @@ function vHist(){
   <p class="sub">Los meses sin registros aparecen con guion.</p></section>`;
 }
 
+/* al cambiar de sección, el contenido nuevo entra desvaneciendo y desplazándose apenas desde el lado hacia el que te mueves */
+function playTab(cls){const a=document.getElementById("app");a.classList.remove("go-r","go-l");void a.offsetWidth;a.classList.add(cls);}
+
 /* ---------- acciones ---------- */
 let armed=null;
 function confirmClick(btn){if(armed===btn){armed=null;return true;}if(armed){armed.classList.remove("armed");armed.textContent=armed.dataset.lbl;}armed=btn;btn.dataset.lbl=btn.textContent;btn.textContent="Confirmar";btn.classList.add("armed");setTimeout(()=>{if(armed===btn){btn.classList.remove("armed");btn.textContent=btn.dataset.lbl;armed=null;}},3500);return false;}
@@ -330,7 +338,12 @@ document.addEventListener("click",e=>{
     case "paleta":setLook({paleta:id});break;
     case "resetLook":cfg.apariencia={tema:"auto",paleta:"azul",acento:""};applyLook();saveCfg();toast("Colores restablecidos");break;
     case "skipWelcome":cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));break;
-    case "tab":if(!TABS.some(x=>x[0]===id))break;tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }closeLayer($("moreSheet"));render();window.scrollTo(0,0);break;
+    case "tab":{
+      if(!TABS.some(x=>x[0]===id))break;
+      const from=TABS.findIndex(x=>x[0]===tab),to=TABS.findIndex(x=>x[0]===id),changed=id!==tab;
+      tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }closeLayer($("moreSheet"));render();window.scrollTo(0,0);
+      if(changed)playTab(to>from?"go-r":"go-l");
+      break;}
     case "more":openMore(b);break;
     case "rail":{const de=document.documentElement;de.classList.add("railanim");setTimeout(()=>de.classList.remove("railanim"),300);const on=de.classList.toggle("rail");try{localStorage.setItem("fin.rail",on?"1":"0")}catch(_){ }renderTabs();const nb=document.querySelector(".collapse-btn");if(nb)nb.focus({preventScroll:true});break;}
     case "closeLayer":{const el=$(id||"x");if(el&&el.classList.contains("layer"))closeLayer(el);break;}
