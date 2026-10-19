@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0d6b5c">
+<meta name="theme-color" content="#2f5bea">
 <meta name="description" content="Control personal de ingresos, gastos, pagos fijos, presupuestos, metas y deudas.">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/png" href="/icons/icon-192.png">
@@ -18,28 +18,28 @@
 <style>
 /* Layout: columna de trabajo de 980px; barra de pestañas fija arriba, cifras clave primero, detalle debajo */
 :root{
-  --bg:#f3f6f5; --surface:#ffffff; --sunk:#e8eeec; --line:#d3dedb;
-  --fg:#11211d; --muted:#5a6d68;
-  --accent:#0d6b5c; --accent-ink:#ffffff; --accent-soft:#d6ebe6;
-  --good:#1f7a3f; --warn:#a35f00; --bad:#b42318;
-  --good-soft:#dcf0e2; --warn-soft:#fbecd2; --bad-soft:#fbe0dc;
+  --bg:#f7f6f2; --surface:#ffffff; --sunk:#efede6; --line:#e7e4dc;
+  --fg:#1b1f2a; --muted:#6b7280;
+  --accent:#2f5bea; --accent-ink:#ffffff; --accent-soft:#e4ebfd;
+  --good:#1e8e5a; --warn:#a8710d; --bad:#d64545;
+  --good-soft:#ddf1e6; --warn-soft:#f8ecd0; --bad-soft:#fbe3e3;
   --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-num:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0d1513; --surface:#14201d; --sunk:#1a2925; --line:#29403a;
-  --fg:#e4efec; --muted:#93a9a3;
-  --accent:#4fc2ac; --accent-ink:#06201b; --accent-soft:#173a33;
-  --good:#5cc983; --warn:#e8a64a; --bad:#f07a6e;
-  --good-soft:#163524; --warn-soft:#3a2a12; --bad-soft:#3d1a17;
+  --bg:#12141a; --surface:#1c1f28; --sunk:#171a21; --line:#2a2e3a;
+  --fg:#eceef3; --muted:#9aa1b2;
+  --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52;
+  --good:#4cc78a; --warn:#e3a947; --bad:#f07878;
+  --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;
   color-scheme:dark;}}
 :root[data-theme="dark"]{
-  --bg:#0d1513; --surface:#14201d; --sunk:#1a2925; --line:#29403a;
-  --fg:#e4efec; --muted:#93a9a3;
-  --accent:#4fc2ac; --accent-ink:#06201b; --accent-soft:#173a33;
-  --good:#5cc983; --warn:#e8a64a; --bad:#f07a6e;
-  --good-soft:#163524; --warn-soft:#3a2a12; --bad-soft:#3d1a17;
+  --bg:#12141a; --surface:#1c1f28; --sunk:#171a21; --line:#2a2e3a;
+  --fg:#eceef3; --muted:#9aa1b2;
+  --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52;
+  --good:#4cc78a; --warn:#e3a947; --bad:#f07878;
+  --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;
   color-scheme:dark;}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
