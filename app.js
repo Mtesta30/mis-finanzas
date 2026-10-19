@@ -80,7 +80,7 @@ async function loadAll(){
   if(error){offline=true;render();return;}
   const c=defCfg(), ms={};
   (data||[]).forEach(r=>{if(r.doc_id==="config")Object.assign(c,cleanCfg(r.data||{}));else if(/^m-\d{4}-\d{2}$/.test(r.doc_id))ms[r.doc_id.slice(2)]=cleanMonth(r.data||{});});
-  cfg=c;months=ms;offline=false;ready=true;applyLook();render();maybeWelcome();
+  cfg=c;months=ms;offline=false;ready=true;applyLook();render();maybeWelcome();loadPending();
 }
 
 /* ---------- validación de datos leídos ---------- */
@@ -131,7 +131,7 @@ function renderTabs(){
   const cur_=id=>id===tab?' aria-current="page"':"";
   const railOn=document.documentElement.classList.contains("rail");
   document.getElementById("tabs").innerHTML=`<div class="side-brand" aria-hidden="true"><span class="sb-full">Mis Finanzas</span><span class="sb-mini">MF</span></div>`
-    +TABS.map(([id,l,s])=>`<button class="tab" type="button" data-act="tab" data-id="${id}" data-grp="${MORE.includes(id)?"more":"main"}" title="${l}" aria-label="${l}"${cur_(id)}>${svg(id)}<span class="lb-long">${l}</span><span class="lb-short">${s||l}</span></button>`).join("")
+    +TABS.map(([id,l,s])=>`<button class="tab" type="button" data-act="tab" data-id="${id}" data-grp="${MORE.includes(id)?"more":"main"}" title="${l}" aria-label="${l}"${cur_(id)}>${svg(id)}<span class="lb-long">${l}</span><span class="lb-short">${s||l}</span>${id==="resumen"&&pend.length?`<i class="badge" aria-hidden="true"></i>`:""}</button>`).join("")
     +`<button class="tab more-btn" type="button" data-act="more" aria-haspopup="dialog"${MORE.includes(tab)?' aria-current="page"':""}>${svg("mas")}<span class="lb-short">Más</span></button>`
     +`<button class="tab collapse-btn" type="button" data-act="rail" aria-pressed="${railOn}" aria-label="${railOn?"Expandir menú":"Contraer menú"}" title="${railOn?"Expandir menú":"Contraer menú"}">${svg("rail")}<span class="lb-long">Contraer menú</span></button>`;
   const ml=mName(cur);document.getElementById("monthLabel").textContent=ml.charAt(0).toUpperCase()+ml.slice(1);
@@ -190,6 +190,47 @@ function movForm(){
   </form>`;
 }
 
+/* ---------- pagos de Apple Pay detectados (bandeja) ---------- */
+let pend=[],autoToken="",tieneClave=false;
+const pad2=n=>String(n).padStart(2,"0");
+const ymd=d=>d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+function cleanPend(r){
+  if(!r||!/^[0-9a-f-]{36}$/i.test(String(r.id)))return null;
+  const m=+r.monto;if(!isFinite(m)||m<=0)return null;
+  const d=new Date(r.creado);
+  return {id:String(r.id),monto:m,comercio:str(r.comercio,120),tarjeta:str(r.tarjeta,60),creado:isFinite(d)?d:new Date()};
+}
+async function loadPending(){
+  if(!sb||!uid)return;const who=uid;
+  const {data,error}=await sb.from("pagos_pendientes").select("id,monto,comercio,tarjeta,creado").order("creado",{ascending:false}).limit(50);
+  if(who!==uid)return;
+  pend=error?[]:arr(data).map(cleanPend).filter(Boolean);
+  render();
+}
+const catKey=c=>String(c||"").toLowerCase().slice(0,60);
+function lastCatFor(c){try{return (JSON.parse(localStorage.getItem("fin.apayCat")||"{}"))[catKey(c)]||"";}catch(e){return "";}}
+function rememberCat(c,cat){
+  try{const m=JSON.parse(localStorage.getItem("fin.apayCat")||"{}");m[catKey(c)]=cat;
+    const ks=Object.keys(m);if(ks.length>60)delete m[ks[0]];localStorage.setItem("fin.apayCat",JSON.stringify(m));}catch(e){}
+}
+function dropPend(id){
+  pend=pend.filter(x=>x.id!==id);render();
+  sb.from("pagos_pendientes").delete().eq("id",id).then(({error})=>{if(error)toast("Quedó registrado, pero no se pudo quitar de la bandeja. Descártalo de nuevo.");});
+}
+function pendHTML(){
+  if(!pend.length)return "";
+  const cats=gastoCats(),fmt=d=>d.toLocaleDateString("es-CO",{day:"numeric",month:"short"}).replace(".","");
+  return `<section class="panel remind"><div class="split"><div><h2>Pagos detectados</h2><p class="sub">Llegaron desde Apple Pay. Elige la categoría y confírmalos.</p></div><span class="chip warn">${pend.length}</span></div>
+    <ul class="list pend">${pend.slice(0,5).map(p=>{
+      const last=lastCatFor(p.comercio),sel=cats.includes(last)?last:(cats.includes("Otros")?"Otros":cats[0]);
+      const val=Number.isInteger(p.monto)?p.monto:String(p.monto).replace(".",",");
+      return `<li><div class="li-main"><b>${esc(p.comercio||"Pago con Apple Pay")}</b><small>${esc(fmt(p.creado))}${p.tarjeta?" · "+esc(p.tarjeta):""}</small></div>
+      <form class="row" data-form="apay" data-id="${p.id}"><label class="f">Monto (COP)<input name="monto" inputmode="numeric" value="${esc(val)}" required></label>
+        <label class="f">Categoría<select name="cat">${cats.map(c=>`<option${c===sel?" selected":""}>${esc(c)}</option>`).join("")}</select></label>
+        <button class="btn sm">Registrar</button><button type="button" class="icon" data-act="apayDel" data-id="${p.id}">Descartar</button></form></li>`;}).join("")}</ul>
+    ${pend.length>5?`<p class="sub">y ${pend.length-5} más. Se muestran de a cinco.</p>`:""}</section>`;
+}
+
 /* pagos fijos por atender: vencidos sin pagar y los que vencen en los próximos 3 días (solo el mes actual) */
 function remindersHTML(){
   if(cur!==mk(today))return "";
@@ -210,6 +251,7 @@ function vResumen(){
   const cats=Object.entries(sp).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
   const max=Math.max(1,...cats.map(c=>c[1]));
   return `${noSal?`<section class="panel"><div><h2>Empieza por tu salario</h2><p class="sub">Escribe cuánto recibes al mes. Después agrega tus pagos fijos (arriendo, celular, internet, transporte).</p></div>${salForm()}</section>`:""}
+  ${pendHTML()}
   ${remindersHTML()}
   ${kpis(cur)}
   <section class="panel"><div><h2>Registrar movimiento</h2><p class="sub">Cada gasto o ingreso extra que tengas en ${mName(cur)}.</p></div>${movForm()}</section>
@@ -349,6 +391,12 @@ document.addEventListener("click",e=>{
     case "closeLayer":{const el=$(id||"x");if(el&&el.classList.contains("layer"))closeLayer(el);break;}
     case "openCats":renderCatList();openLayer($("catSheet"),b);break;
     case "openExport":fillExportRange();openLayer($("expSheet"),b);break;
+    case "apayDel":dropPend(id);break;
+    case "openAuto":openAuto();break;
+    case "autoBack":closeAuto();break;
+    case "autoGen":if(tieneClave&&!confirmClick(b))return;autoGen();break;
+    case "autoTest":autoTest();break;
+    case "copy":copyText(id);break;
     case "openPass":openPass();break;
     case "passBack":closePass();break;
     case "eye":toggleEye(b);break;
@@ -378,6 +426,14 @@ document.addEventListener("submit",e=>{
   const f=e.target.closest("form[data-form]");if(!f)return;e.preventDefault();
   const fd=Object.fromEntries(new FormData(f));const id=f.dataset.id;
   switch(f.dataset.form){
+    case "apay":{
+      const p=pend.find(x=>x.id===id);if(!p)return;
+      const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");
+      const cat=gastoCats().includes(fd.cat)?fd.cat:"Otros";
+      let fecha=ymd(p.creado);if(!/^20\d\d-\d\d-\d\d$/.test(fecha))fecha=cur+"-01";
+      rememberCat(p.comercio,cat);
+      addMov(fecha.slice(0,7),{id:uidv(),tipo:"gasto",monto:v,cat,desc:p.comercio||"Pago con Apple Pay",fecha});
+      dropPend(id);toast("Gasto registrado");return;}
     case "cat":{addCat(fd.nombre,fd.tipo);f.reset();return;}
     case "pass":changePassword(f,fd);return;
     case "perfil":{const p=cfg.perfil,lim={nombre:60,apodo:30,telefono:20,nacimiento:10,ciudad:60};
@@ -458,10 +514,10 @@ function setSession(session){
   if(session&&session.user){
     if(authMode==="reset")return;
     userMail=session.user.email||"";$("userEmail").textContent=userMail;
-    if(uid!==session.user.id){uid=session.user.id;ready=false;cfg=defCfg();months={};showApp();render();loadAll();}
+    if(uid!==session.user.id){uid=session.user.id;ready=false;cfg=defCfg();months={};pend=[];showApp();render();loadAll();}
     else showApp();
   }else{
-    uid=null;ready=false;cfg=defCfg();months={};userMail="";resetLayers();
+    uid=null;ready=false;cfg=defCfg();months={};pend=[];autoToken="";userMail="";resetLayers();
     $("authPass").value="";setAuthMode("login");showAuth();
   }
 }
@@ -518,7 +574,7 @@ function closeLayer(el){
 function resetLayers(){
   document.querySelectorAll(".layer").forEach(el=>{clearTimeout(layerTimers.get(el));el.classList.remove("open");el.hidden=true;});
   document.documentElement.classList.remove("noscroll");$("topbar").inert=false;$("appView").inert=false;$("tabs").inert=false;
-  crop.img=null;$("cropBox").hidden=true;$("passBox").hidden=true;$("profMain").hidden=false;
+  crop.img=null;$("cropBox").hidden=true;$("passBox").hidden=true;$("autoBox").hidden=true;$("profMain").hidden=false;
 }
 /* selector de meses: cuadrícula de 12 meses que sale de la píldora */
 let pickYear=0,popOpen=false;
@@ -549,6 +605,7 @@ document.addEventListener("keydown",e=>{
   if(popOpen){closeMonthPop(true);return;}
   if(!$("cropBox").hidden){cancelCrop();return;}
   if(!$("passBox").hidden){closePass();return;}
+  if(!$("autoBox").hidden){closeAuto();return;}
   const sheet=document.querySelector(".layer.open:not(.center)");
   if(sheet)closeLayer(sheet);
   else if($("welcome").classList.contains("open")){cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));}
@@ -564,8 +621,8 @@ function openProfile(opener){
   const f=$("profForm");
   PROF_FIELDS.forEach(k=>{f.elements[k].value=cfg.perfil[k]||"";});
   f.elements.nacimiento.max=new Date().toISOString().slice(0,10);
-  $("cropBox").hidden=true;$("passBox").hidden=true;$("profMain").hidden=false;updateProfPhotoUI();
-  openLayer($("profileSheet"),opener);
+  $("cropBox").hidden=true;$("passBox").hidden=true;$("autoBox").hidden=true;$("profMain").hidden=false;updateProfPhotoUI();
+  openLayer($("profileSheet"),opener);refreshAuto();
 }
 function maybeWelcome(){
   const p=cfg.perfil;
@@ -831,6 +888,50 @@ async function changePassword(f,fd){
     if(error){toast(/different|same/i.test(error.message)?"Usa una contraseña distinta a la actual.":"No se pudo cambiar la contraseña. Inténtalo de nuevo.");}
     else{closePass();toast("Contraseña actualizada");}
   }finally{updatePass();}
+}
+
+/* pantalla "Pagos automáticos" (Apple Pay con Atajos) dentro del perfil */
+const hex=u8=>[...u8].map(b=>b.toString(16).padStart(2,"0")).join("");
+async function refreshAuto(){
+  if(!sb||!uid)return;
+  const {data,error}=await sb.from("atajo_tokens").select("user_id").limit(1);
+  const falta=!!error;
+  $("autoWarn").hidden=!falta;
+  tieneClave=!falta&&arr(data).length>0;
+  $("autoGen").textContent=tieneClave?"Generar una clave nueva":"Generar clave";
+  $("autoGen").disabled=falta;
+  $("autoStatus").textContent=falta?"Falta un paso en Supabase":tieneClave?"Configurado. Toca para ver cómo se conecta":"Detecta tus pagos y regístralos con un toque";
+}
+function openAuto(){
+  const conf=window.FINANZAS_CONFIG||{};
+  $("urlVal").textContent=(conf.supabaseUrl||"")+"/rest/v1/rpc/registrar_pago_atajo";
+  $("pubVal").textContent=conf.supabaseAnonKey||"";
+  autoToken="";$("keyBox").hidden=true;$("autoTest").hidden=true;
+  $("profMain").hidden=true;$("autoBox").hidden=false;
+  refreshAuto();
+}
+function closeAuto(){autoToken="";$("keyVal").textContent="";$("autoBox").hidden=true;$("profMain").hidden=false;refreshAuto();}
+async function autoGen(){
+  if(!sb||!uid)return;
+  const tok=hex(crypto.getRandomValues(new Uint8Array(32)));
+  const hash=hex(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(tok))));
+  const {error}=await sb.from("atajo_tokens").upsert({user_id:uid,token_hash:hash});
+  if(error){$("autoWarn").hidden=false;return toast("No se pudo crear la clave. Revisa que ejecutaste el script de Supabase.");}
+  autoToken=tok;tieneClave=true;
+  $("keyVal").textContent=tok;$("keyBox").hidden=false;$("autoTest").hidden=false;
+  $("autoGen").textContent="Generar una clave nueva";
+  toast("Clave creada. Cópiala ahora: no se vuelve a mostrar.");
+}
+async function autoTest(){
+  if(!autoToken)return;
+  const {data,error}=await sb.rpc("registrar_pago_atajo",{p_token:autoToken,p_monto:"12.345",p_comercio:"Prueba de Mis Finanzas",p_tarjeta:"Apple Pay"});
+  if(error||!data||!data.ok)return toast("La prueba falló. Revisa que ejecutaste el script de Supabase.");
+  toast("Pago de prueba enviado. Míralo en el Resumen.");loadPending();
+}
+function copyText(id){
+  if(!["keyVal","urlVal","pubVal"].includes(id))return;
+  const t=$(id).textContent;if(!t)return;
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast("Copiado"),()=>toast("No se pudo copiar. Mantén presionado el texto para copiarlo."));
 }
 
 /* "Más secciones" (celular): pagos fijos, deudas e historial */

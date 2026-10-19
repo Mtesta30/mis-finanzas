@@ -27,6 +27,8 @@ Tabla `finanzas_docs (user_id, doc_id, data jsonb)`. Cada usuario tiene:
 - `config`: `{salario, fijos[], presupuestos{cat:limite}, metas[], deudas[]}`
 - `m-AAAA-MM`: `{movs[], pagados{fijoId:true}, salario, fijosTotal, salarioMes?}`
 
+Pagos de Apple Pay (`supabase/apple-pay.sql`, se ejecuta aparte): tablas `atajo_tokens` (huella SHA-256 de la clave de cada persona) y `pagos_pendientes` (bandeja), más la función `registrar_pago_atajo` que llama el Atajo del iPhone con la publishable key. Nada pasa a gasto sin confirmar en la app.
+
 `app.js` valida todo lo que lee de la base (`cleanCfg`, `cleanMonth`) y escapa todo texto de usuario con `esc()`. Mantener eso en cualquier markup nuevo.
 
 ## Restricciones al rediseñar

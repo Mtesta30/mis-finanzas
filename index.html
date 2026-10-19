@@ -356,6 +356,21 @@ html.noscroll{overflow:hidden}
 .reqs li::before{content:"";width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);flex:none;background:center/10px no-repeat}
 .reqs li.ok{color:var(--fg)}
 .reqs li.ok::before{background-color:var(--good);border-color:var(--good);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+/* Pagos de Apple Pay: bandeja en el Resumen y pantalla de conexión */
+.tab{position:relative}
+.tab .badge{position:absolute;top:5px;left:calc(50% + 6px);width:9px;height:9px;border-radius:50%;background:var(--bad);box-shadow:0 0 0 2px var(--surface)}
+@media (min-width:900px){.tab .badge{top:50%;left:auto;right:12px;margin-top:-4px}}
+ul.list.pend li{grid-template-columns:1fr;gap:8px}
+.row-actions.start{justify-content:flex-start}
+.steps{margin:0;padding-left:1.3em;display:grid;gap:18px}
+.steps>li{padding-left:2px}
+.steps>li>*+*{margin-top:8px}
+.steps>li>.sub,.steps>li>b{display:block}
+.steps>li::marker{font-weight:600;color:var(--muted)}
+.bullets{margin:0;padding-left:1.1em;display:grid;gap:8px;font-size:.88rem;color:var(--muted)}
+.bullets code,.steps code{font:500 .78rem ui-monospace,Menlo,Consolas,monospace;background:var(--sunk);border-radius:5px;padding:1px 5px;color:var(--fg)}
+.keybox{display:flex;align-items:center;gap:8px;background:var(--sunk);border-radius:10px;padding:8px 8px 8px 12px}
+.keybox code{flex:1;min-width:0;overflow-wrap:anywhere;word-break:break-all;background:none;padding:0;font-size:.74rem}
 /* Más secciones */
 .morelist{display:grid;background:var(--sunk);border-radius:14px;overflow:hidden}
 .morerow{display:flex;align-items:center;gap:14px;padding:14px;background:none;border:0;color:var(--fg);text-align:left;width:100%;font:500 1rem var(--f-body);cursor:pointer}
@@ -498,6 +513,16 @@ html.noscroll{overflow:hidden}
           <p class="sub" id="lookNote" hidden>Ajustamos el tono en los textos para que se lean bien.</p>
           <div><button type="button" class="btn ghost sm" data-act="resetLook">Restablecer</button></div>
         </section>
+        <section class="sec" aria-labelledby="autoTitle">
+          <h3 id="autoTitle">Pagos automáticos</h3>
+          <div class="seccard">
+            <button type="button" class="secrow secbtn" data-act="openAuto">
+              <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
+              <div class="secmain"><span class="secval">Apple Pay</span><span class="sub" id="autoStatus">Detecta tus pagos y regístralos con un toque</span></div>
+              <span class="chev" aria-hidden="true">&rsaquo;</span>
+            </button>
+          </div>
+        </section>
         <section class="sec" aria-labelledby="secTitle">
           <h3 id="secTitle">Seguridad</h3>
           <div class="seccard">
@@ -516,6 +541,40 @@ html.noscroll{overflow:hidden}
           <span class="sub">Sesión</span>
           <button type="button" class="btn ghost sm" data-act="logout">Cerrar sesión</button>
         </div>
+      </div>
+      <div class="passbox" id="autoBox" hidden>
+        <button type="button" class="backbtn" data-act="autoBack"><span aria-hidden="true">&lsaquo;</span> Perfil</button>
+        <div>
+          <h3>Pagos automáticos con Apple Pay</h3>
+          <p class="sub">Cada pago que hagas con una tarjeta de tu Cartera llega a una bandeja en el Resumen. Tú eliges la categoría y lo confirmas con un toque.</p>
+        </div>
+        <p class="notice" id="autoWarn" hidden>Falta un paso en Supabase: ejecuta una vez el archivo <b>supabase/apple-pay.sql</b> en el SQL Editor y vuelve a abrir esta pantalla.</p>
+        <ol class="steps">
+          <li>
+            <b>Genera tu clave</b>
+            <span class="sub">Es la contraseña que usará tu iPhone. Se muestra una sola vez; si generas otra, la anterior deja de funcionar.</span>
+            <div class="row-actions start"><button type="button" class="btn sm" id="autoGen" data-act="autoGen">Generar clave</button></div>
+            <div class="keybox" id="keyBox" hidden><code id="keyVal"></code><button type="button" class="icon" data-act="copy" data-id="keyVal">Copiar</button></div>
+            <div class="row-actions start"><button type="button" class="btn ghost sm" id="autoTest" data-act="autoTest" hidden>Enviar pago de prueba</button></div>
+          </li>
+          <li>
+            <b>Copia estos dos datos</b>
+            <span class="sub">Dirección</span>
+            <div class="keybox"><code id="urlVal"></code><button type="button" class="icon" data-act="copy" data-id="urlVal">Copiar</button></div>
+            <span class="sub">Clave pública (apikey)</span>
+            <div class="keybox"><code id="pubVal"></code><button type="button" class="icon" data-act="copy" data-id="pubVal">Copiar</button></div>
+          </li>
+          <li>
+            <b>Crea la automatización en tu iPhone</b>
+            <span class="sub">En la app Atajos, los nombres pueden variar un poco según tu versión de iOS.</span>
+            <ul class="bullets">
+              <li>Automatización, nueva automatización, <b>Cartera</b>, <b>Transacción</b>. Elige tus tarjetas y marca <b>Ejecutar inmediatamente</b>.</li>
+              <li>Agrega la acción <b>Obtener contenido de URL</b> y pega la dirección.</li>
+              <li>Método <b>POST</b>. Encabezados: <code>apikey</code> con la clave pública, y <code>Content-Type</code> con <code>application/json</code>.</li>
+              <li>Cuerpo de la solicitud en <b>JSON</b>, con cuatro campos de tipo texto: <code>p_token</code> (tu clave), <code>p_monto</code> (la variable <b>Monto</b>), <code>p_comercio</code> (la variable <b>Comercio</b>) y <code>p_tarjeta</code> (la variable <b>Tarjeta o pase</b>).</li>
+            </ul>
+          </li>
+        </ol>
       </div>
       <div class="passbox" id="passBox" hidden>
         <button type="button" class="backbtn" data-act="passBack"><span aria-hidden="true">&lsaquo;</span> Perfil</button>
