@@ -12,8 +12,11 @@ const ICONS={
   fijos:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
   deudas:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
   historial:'<path d="M5 20V10M12 20V4M19 20v-7"/>',
-  mas:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'
+  mas:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+  rail:'<path d="M15 6l-6 6 6 6"/>'
 };
+/* menú lateral de computadora: expandido o contraído (solo íconos); se recuerda en este dispositivo */
+try{if(localStorage.getItem("fin.rail")==="1")document.documentElement.classList.add("rail");}catch(e){}
 const svg=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
 let sb=null, uid=null, ready=false, offline=false, pending=0;
 let cfg=defCfg(), months={};
@@ -126,9 +129,11 @@ function cleanMonth(m){
 /* ---------- render ---------- */
 function renderTabs(){
   const cur_=id=>id===tab?' aria-current="page"':"";
-  document.getElementById("tabs").innerHTML=`<div class="side-brand" aria-hidden="true">Mis Finanzas</div>`
-    +TABS.map(([id,l,s])=>`<button class="tab" type="button" data-act="tab" data-id="${id}" data-grp="${MORE.includes(id)?"more":"main"}"${cur_(id)}>${svg(id)}<span class="lb-long">${l}</span><span class="lb-short">${s||l}</span></button>`).join("")
-    +`<button class="tab more-btn" type="button" data-act="more" aria-haspopup="dialog"${MORE.includes(tab)?' aria-current="page"':""}>${svg("mas")}<span class="lb-short">Más</span></button>`;
+  const railOn=document.documentElement.classList.contains("rail");
+  document.getElementById("tabs").innerHTML=`<div class="side-brand" aria-hidden="true"><span class="sb-full">Mis Finanzas</span><span class="sb-mini">MF</span></div>`
+    +TABS.map(([id,l,s])=>`<button class="tab" type="button" data-act="tab" data-id="${id}" data-grp="${MORE.includes(id)?"more":"main"}" title="${l}" aria-label="${l}"${cur_(id)}>${svg(id)}<span class="lb-long">${l}</span><span class="lb-short">${s||l}</span></button>`).join("")
+    +`<button class="tab more-btn" type="button" data-act="more" aria-haspopup="dialog"${MORE.includes(tab)?' aria-current="page"':""}>${svg("mas")}<span class="lb-short">Más</span></button>`
+    +`<button class="tab collapse-btn" type="button" data-act="rail" aria-pressed="${railOn}" aria-label="${railOn?"Expandir menú":"Contraer menú"}" title="${railOn?"Expandir menú":"Contraer menú"}">${svg("rail")}<span class="lb-long">Contraer menú</span></button>`;
   const ml=mName(cur);document.getElementById("monthLabel").textContent=ml.charAt(0).toUpperCase()+ml.slice(1);
   document.querySelector('[data-act="today"]').classList.toggle("show",cur!==mk(today));
 }
@@ -327,6 +332,7 @@ document.addEventListener("click",e=>{
     case "skipWelcome":cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));break;
     case "tab":if(!TABS.some(x=>x[0]===id))break;tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }closeLayer($("moreSheet"));render();window.scrollTo(0,0);break;
     case "more":openMore(b);break;
+    case "rail":{const de=document.documentElement;de.classList.add("railanim");setTimeout(()=>de.classList.remove("railanim"),300);const on=de.classList.toggle("rail");try{localStorage.setItem("fin.rail",on?"1":"0")}catch(_){ }renderTabs();const nb=document.querySelector(".collapse-btn");if(nb)nb.focus({preventScroll:true});break;}
     case "closeLayer":{const el=$(id||"x");if(el&&el.classList.contains("layer"))closeLayer(el);break;}
     case "openCats":renderCatList();openLayer($("catSheet"),b);break;
     case "openExport":fillExportRange();openLayer($("expSheet"),b);break;
@@ -433,8 +439,8 @@ $("authForm").addEventListener("submit",async e=>{
   }finally{btn.disabled=false;}
 });
 
-function showAuth(){ $("topbar").hidden=true;$("tabs").hidden=true;$("appView").hidden=true;$("authView").hidden=false; }
-function showApp(){ $("authView").hidden=true;$("topbar").hidden=false;$("tabs").hidden=false;$("appView").hidden=false; }
+function showAuth(){ $("topbar").hidden=true;$("tabs").hidden=true;$("appView").hidden=true;$("authView").hidden=false;document.documentElement.classList.remove("inapp"); }
+function showApp(){ $("authView").hidden=true;$("topbar").hidden=false;$("tabs").hidden=false;$("appView").hidden=false;document.documentElement.classList.add("inapp"); }
 function setSession(session){
   if(session&&session.user){
     if(authMode==="reset")return;

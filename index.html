@@ -101,13 +101,13 @@ h1{font-family:var(--f-display);font-size:1.5rem;line-height:1.1;margin:0;letter
 .tab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:0;border-radius:12px;color:var(--muted);font:500 .68rem/1.1 var(--f-body);letter-spacing:.01em;padding:6px 2px 4px;cursor:pointer;white-space:nowrap}
 .tab svg{width:24px;height:24px;flex:none}
 .tab[aria-current="page"]{color:var(--accent-fg)}
-.tab .lb-long,.side-brand{display:none}
+.tab .lb-long,.side-brand,.tab.collapse-btn{display:none}
 .tab[data-grp="more"]{display:none}
 .tab.more-btn{display:flex}
 main{padding-block:20px calc(96px + env(safe-area-inset-bottom,0px));display:grid;gap:20px}
 .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))!important}
 @media (min-width:900px){
-  body{padding-left:224px}
+  html.inapp body{padding-left:224px}
   .tabbar{left:0;right:auto;top:0;bottom:0;width:224px;flex-direction:column;justify-content:flex-start;gap:2px;padding:max(20px,env(safe-area-inset-top,0px)) 12px 20px;border-top:0;border-right:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
   .side-brand{display:block;font:700 1.15rem var(--f-display);letter-spacing:-.02em;padding:4px 12px 18px}
   .tab{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;font:500 .94rem var(--f-body);letter-spacing:0;padding:10px 12px}
@@ -118,6 +118,18 @@ main{padding-block:20px calc(96px + env(safe-area-inset-bottom,0px));display:gri
   .tab[aria-current="page"]{background:var(--accent-soft)}
   main{padding-block:20px 48px}
   .toast{bottom:calc(16px + env(safe-area-inset-bottom,0px))!important}
+  /* menú contraído: solo íconos */
+  html.railanim body,html.railanim .tabbar{transition:width 200ms var(--ease-out),padding-left 200ms var(--ease-out)}
+  .tab.collapse-btn{display:flex;margin-top:auto}
+  .sb-mini{display:none}
+  html.inapp.rail body{padding-left:72px}
+  html.rail .tabbar{width:72px;padding-inline:10px}
+  html.rail .tab{justify-content:center;padding:10px 0}
+  html.rail .tab .lb-long{display:none}
+  html.rail .side-brand{padding:4px 0 18px;text-align:center}
+  html.rail .sb-full{display:none}
+  html.rail .sb-mini{display:block}
+  html.rail .collapse-btn svg{transform:rotate(180deg)}
 }
 @media (hover:hover) and (pointer:fine){.tab:hover{color:var(--fg)}}
 h2{font-family:var(--f-display);font-size:1.15rem;line-height:1.25;margin:0 0 4px;text-wrap:balance;letter-spacing:-.014em;font-optical-sizing:auto}
@@ -138,6 +150,10 @@ form.row{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
 label.f{display:grid;gap:3px;font-size:.78rem;letter-spacing:.01em;color:var(--muted);flex:1 1 130px;min-width:0}
 label.f.wide{flex:2 1 200px}
 input,select{font:inherit;font-size:.95rem;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0}
+/* En iPhone los campos de fecha y mes traen un ancho propio que se salía de su columna y tapaba el botón */
+input[type="date"],input[type="month"]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:2.65rem;text-align:left}
+input[type="date"]::-webkit-date-and-time-value,input[type="month"]::-webkit-date-and-time-value{text-align:left;margin:0;min-height:1.2em}
+input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webkit-calendar-picker-indicator{margin:0;padding:0 2px}
 input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent-fg);outline-offset:1px}
 .btn{font:600 .9rem var(--f-body);border-radius:7px;padding:9px 14px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;white-space:nowrap}
 .btn.ghost{background:transparent;color:var(--accent-fg);border-color:var(--accent-fg)}
@@ -331,6 +347,7 @@ html.noscroll{overflow:hidden}
   .toast,.toast[hidden]{transform:translateX(-50%);transition:opacity 150ms ease,visibility 0s 150ms}
   .toast:not([hidden]){transition:opacity 150ms ease}
   .acc summary::after{transition:none}
+  html.railanim body,html.railanim .tabbar{transition:none}
   .avatar-btn:active,.sw:active,.month-label:active,.today:active,.mcell:active{transform:none}
   .mpop,.mpop[hidden]{transform:translateX(var(--px));transition:opacity 150ms ease,visibility 0s 150ms}
   .mpop:not([hidden]){transition:opacity 150ms ease}
