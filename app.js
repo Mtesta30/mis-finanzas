@@ -8,7 +8,7 @@ const today=new Date();
 let cur=mk(today), tab="resumen", movTipo="gasto", pendingRender=false;
 try{const t=localStorage.getItem("fin.tab"); if(t&&TABS.some(x=>x[0]===t)) tab=t;}catch(e){}
 
-function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[],perfil:{nombre:"",apodo:"",telefono:"",nacimiento:"",ciudad:"",foto:"",omitido:false}};}
+function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[],perfil:{nombre:"",apodo:"",telefono:"",nacimiento:"",ciudad:"",foto:"",omitido:false},apariencia:{tema:"auto",paleta:"azul",acento:""}};}
 function mk(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
 function shift(k,n){const [y,m]=k.split("-").map(Number);return mk(new Date(y,m-1+n,1));}
 function mName(k,short){const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("es-CO",short?{month:"short"}:{month:"long",year:"numeric"});}
@@ -64,7 +64,7 @@ async function loadAll(){
   if(error){offline=true;render();return;}
   const c=defCfg(), ms={};
   (data||[]).forEach(r=>{if(r.doc_id==="config")Object.assign(c,cleanCfg(r.data||{}));else if(/^m-\d{4}-\d{2}$/.test(r.doc_id))ms[r.doc_id.slice(2)]=cleanMonth(r.data||{});});
-  cfg=c;months=ms;offline=false;ready=true;render();maybeWelcome();
+  cfg=c;months=ms;offline=false;ready=true;applyLook();render();maybeWelcome();
 }
 
 /* ---------- validación de datos leídos ---------- */
@@ -78,9 +78,15 @@ function cleanPerfil(p){
   return {nombre:str(p.nombre,60),apodo:str(p.apodo,30),telefono:str(p.telefono,20),
     nacimiento:/^\d{4}-\d{2}-\d{2}$/.test(p.nacimiento)?p.nacimiento:"",ciudad:str(p.ciudad,60),foto,omitido:p.omitido===true};
 }
+function cleanApariencia(a){
+  a=a&&typeof a==="object"?a:{};
+  const hex=/^#[0-9a-f]{6}$/i.test(a.acento)?a.acento.toLowerCase():"";
+  const paleta=PALETAS.some(p=>p[0]===a.paleta)?a.paleta:(a.paleta==="personal"&&hex?"personal":"azul");
+  return {tema:["auto","claro","oscuro"].includes(a.tema)?a.tema:"auto",paleta,acento:hex};
+}
 function cleanCfg(c){
   const pres={};Object.entries(c.presupuestos&&typeof c.presupuestos==="object"?c.presupuestos:{}).forEach(([k,v])=>{if(CATS.includes(k))pres[k]=n0(v);});
-  return {salario:n0(c.salario),presupuestos:pres,perfil:cleanPerfil(c.perfil),
+  return {salario:n0(c.salario),presupuestos:pres,perfil:cleanPerfil(c.perfil),apariencia:cleanApariencia(c.apariencia),
     fijos:arr(c.fijos).map(f=>({id:safeId(f.id),nombre:str(f.nombre),monto:n0(f.monto),cat:str(f.cat,40),dia:Math.min(31,Math.max(0,parseInt(f.dia)||0))||null})),
     metas:arr(c.metas).map(g=>({id:safeId(g.id),nombre:str(g.nombre),objetivo:n0(g.objetivo),ahorrado:n0(g.ahorrado),fecha:/^\d{4}-\d{2}$/.test(g.fecha)?g.fecha:""})),
     deudas:arr(c.deudas).map(d=>({id:safeId(d.id),nombre:str(d.nombre),saldo:n0(d.saldo),inicial:n0(d.inicial),cuota:n0(d.cuota),tasa:str(d.tasa,10)}))};
@@ -257,6 +263,9 @@ document.addEventListener("click",e=>{
     case "quitarFoto":cfg.perfil.foto="";saveCfg();updateProfPhotoUI();updateTop();toast("Foto quitada");break;
     case "cropCancel":cancelCrop();break;
     case "cropOk":cropDone();break;
+    case "tema":setLook({tema:id});break;
+    case "paleta":setLook({paleta:id});break;
+    case "resetLook":cfg.apariencia={tema:"auto",paleta:"azul",acento:""};applyLook();saveCfg();toast("Colores restablecidos");break;
     case "skipWelcome":cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));break;
     case "tab":tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }render();window.scrollTo(0,0);break;
     case "prevMonth":cur=shift(cur,-1);render();break;
@@ -511,6 +520,79 @@ $("fotoInput").addEventListener("change",e=>{
   vp.addEventListener("pointerup",end);vp.addEventListener("pointercancel",end);
   vp.addEventListener("wheel",e=>{e.preventDefault();crop.zoom=Math.min(3,Math.max(1,crop.zoom-e.deltaY*0.002));$("cropZoom").value=crop.zoom;paintCrop();},{passive:false});
   $("cropZoom").addEventListener("input",e=>{crop.zoom=+e.target.value;paintCrop();});
+})();
+
+/* ---------- apariencia: tema y color de la app ---------- */
+const PALETAS=[["azul","Azul","#2f5bea"],["violeta","Violeta","#7a5cfa"],["rosa","Rosa","#d6336c"],["coral","Coral","#e5584b"],
+  ["naranja","Naranja","#d97706"],["verde","Verde","#1e8e5a"],["turquesa","Turquesa","#0e8f9c"],["grafito","Grafito","#3b4252"]];
+const hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const rgbHex=a=>"#"+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("");
+function lum(hex){const [r,g,b]=hexRgb(hex).map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);});return .2126*r+.7152*g+.0722*b;}
+const ratio=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+function toHsl(hex){
+  const [r,g,b]=hexRgb(hex).map(v=>v/255),mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,d=mx-mn;
+  let h=0,s=0;
+  if(d){s=d/(1-Math.abs(2*l-1));h=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4;h*=60;}
+  return [h,s,l];
+}
+function fromHsl(h,s,l){
+  const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;
+  const [r,g,b]=h<60?[c,x,0]:h<120?[x,c,0]:h<180?[0,c,x]:h<240?[0,x,c]:h<300?[x,0,c]:[c,0,x];
+  return rgbHex([r+m,g+m,b+m].map(v=>v*255));
+}
+const mixHex=(a,b,t)=>{const A=hexRgb(a),B=hexRgb(b);return rgbHex(A.map((v,i)=>v*(1-t)+B[i]*t));};
+/* aclara u oscurece el color hasta que se lea sobre el fondo (relación de contraste mínima) */
+function fixContrast(hex,bg,min,dir){
+  const [h,s,l0]=toHsl(hex);let l=l0,c=hex,n=0;
+  while(ratio(c,bg)<min&&n++<50){l=Math.max(0,Math.min(1,l+dir*.02));c=fromHsl(h,s,l);}
+  return c;
+}
+const bestInk=hex=>ratio(hex,"#ffffff")>=ratio(hex,"#0b1230")?"#ffffff":"#0b1230";
+function deriveLook(hex){
+  const [h,s,l]=toHsl(hex),dk=fromHsl(h,s,Math.max(l,.66));
+  return {light:{accent:hex,ink:bestInk(hex),soft:mixHex(hex,"#ffffff",.88),fg:fixContrast(hex,"#ffffff",4.5,-1)},
+    dark:{accent:dk,ink:bestInk(dk),soft:mixHex(dk,"#1c1f28",.78),fg:fixContrast(dk,"#1c1f28",4.5,1)}};
+}
+function lookHex(a){return a.paleta==="personal"?a.acento:(PALETAS.find(p=>p[0]===a.paleta)||PALETAS[0])[2];}
+function lookCss(a){
+  if(a.paleta==="azul")return "";
+  const d=deriveLook(lookHex(a)),v=t=>`--accent:${t.accent};--accent-ink:${t.ink};--accent-soft:${t.soft};--accent-fg:${t.fg};`;
+  return `:root{${v(d.light)}}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${v(d.dark)}}}:root[data-theme="light"]{${v(d.light)}}:root[data-theme="dark"]{${v(d.dark)}}`;
+}
+function applyTheme(t){
+  const r=document.documentElement;
+  if(t==="claro")r.dataset.theme="light";else if(t==="oscuro")r.dataset.theme="dark";else delete r.dataset.theme;
+  const col=t==="claro"?"#ffffff":t==="oscuro"?"#1c1f28":null;
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m=>{if(!m.dataset.def)m.dataset.def=m.content;m.content=col||m.dataset.def;});
+}
+function syncLookUI(){
+  const a=cfg.apariencia;
+  document.querySelectorAll('[data-act="tema"]').forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.id===a.tema)));
+  document.querySelectorAll('[data-act="paleta"]').forEach(b=>{const on=b.dataset.id===a.paleta;b.setAttribute("aria-pressed",String(on));b.classList.toggle("on",on);});
+  const cu=$("swCustom"),on=a.paleta==="personal";
+  cu.classList.toggle("on",on);cu.style.background=on?a.acento:"";if(a.acento)$("acentoInput").value=a.acento;
+  let adj=false;
+  if(a.paleta!=="azul"){const d=deriveLook(lookHex(a));adj=d.light.fg!==d.light.accent||d.dark.fg!==d.dark.accent;}
+  $("lookNote").hidden=!adj;
+}
+function applyLook(){
+  const a=cfg.apariencia;
+  applyTheme(a.tema);
+  let el=document.getElementById("lookStyle");
+  if(!el){el=document.createElement("style");el.id="lookStyle";document.head.appendChild(el);}
+  el.textContent=lookCss(a);
+  syncLookUI();
+  try{localStorage.setItem("fin.look",JSON.stringify(a));}catch(_){}
+}
+function setLook(patch){Object.assign(cfg.apariencia,patch);applyLook();saveCfg();}
+(function(){
+  $("swatches").innerHTML=PALETAS.map(([id,n,c])=>`<button type="button" class="sw" data-act="paleta" data-id="${id}" style="background:${c}" aria-label="${n}" aria-pressed="false"></button>`).join("")
+    +`<label class="sw custom" id="swCustom" title="Otro color"><input type="color" id="acentoInput" aria-label="Elegir otro color" value="#2f5bea"></label>`;
+  const ci=$("acentoInput");
+  ci.addEventListener("input",()=>{Object.assign(cfg.apariencia,{paleta:"personal",acento:ci.value.toLowerCase()});applyLook();});
+  ci.addEventListener("change",()=>{saveCfg();});
+  try{const s=localStorage.getItem("fin.look");if(s)cfg.apariencia=cleanApariencia(JSON.parse(s));}catch(_){}
+  applyLook();
 })();
 
 /* ---------- arranque ---------- */

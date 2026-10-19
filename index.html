@@ -22,7 +22,7 @@
 :root{
   --bg:#f7f6f2; --surface:#ffffff; --sunk:#efede6; --line:#e7e4dc;
   --fg:#1b1f2a; --muted:#6b7280;
-  --accent:#2f5bea; --accent-ink:#ffffff; --accent-soft:#e4ebfd;
+  --accent:#2f5bea; --accent-ink:#ffffff; --accent-soft:#e4ebfd; --accent-fg:#2f5bea;
   --good:#1e8e5a; --warn:#a8710d; --bad:#d64545;
   --good-soft:#ddf1e6; --warn-soft:#f8ecd0; --bad-soft:#fbe3e3;
   --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
@@ -35,15 +35,16 @@
   --glass:rgba(28,31,40,.72);
   --bg:#12141a; --surface:#1c1f28; --sunk:#171a21; --line:#2a2e3a;
   --fg:#eceef3; --muted:#9aa1b2;
-  --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52;
+  --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52; --accent-fg:#6c8cff;
   --good:#4cc78a; --warn:#e3a947; --bad:#f07878;
   --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;
   color-scheme:dark;}}
+:root[data-theme="light"]{color-scheme:light}
 :root[data-theme="dark"]{
   --glass:rgba(28,31,40,.72);
   --bg:#12141a; --surface:#1c1f28; --sunk:#171a21; --line:#2a2e3a;
   --fg:#eceef3; --muted:#9aa1b2;
-  --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52;
+  --accent:#6c8cff; --accent-ink:#0b1230; --accent-soft:#222c52; --accent-fg:#6c8cff;
   --good:#4cc78a; --warn:#e3a947; --bad:#f07878;
   --good-soft:#16352a; --warn-soft:#3a2d12; --bad-soft:#3d1c1e;
   color-scheme:dark;}
@@ -95,9 +96,9 @@ form.row{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
 label.f{display:grid;gap:3px;font-size:.78rem;letter-spacing:.01em;color:var(--muted);flex:1 1 130px;min-width:0}
 label.f.wide{flex:2 1 200px}
 input,select{font:inherit;font-size:.95rem;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0}
-input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent-fg);outline-offset:1px}
 .btn{font:600 .9rem var(--f-body);border-radius:7px;padding:9px 14px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;white-space:nowrap}
-.btn.ghost{background:transparent;color:var(--accent)}
+.btn.ghost{background:transparent;color:var(--accent-fg);border-color:var(--accent-fg)}
 .btn.sm{padding:5px 10px;font-size:.82rem}
 .icon{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:4px 9px;cursor:pointer;font:500 .8rem var(--f-body)}
 @media (hover:hover) and (pointer:fine){.icon:hover{color:var(--fg);border-color:var(--muted)}}
@@ -175,7 +176,7 @@ button,[role="button"]{-webkit-user-select:none;user-select:none;-webkit-touch-c
 .auth-card h1{font-size:1.8rem}
 .auth-card form{display:grid;gap:12px}
 .auth-card .btn{width:100%;padding:11px}
-.linkbtn{background:none;border:0;color:var(--accent);font:500 .88rem var(--f-body);cursor:pointer;padding:0;text-align:left}
+.linkbtn{background:none;border:0;color:var(--accent-fg);font:500 .88rem var(--f-body);cursor:pointer;padding:0;text-align:left}
 .msg{font-size:.88rem;border-radius:8px;padding:10px 12px}
 .msg.err{background:var(--bad-soft);color:var(--bad)}
 .msg.ok{background:var(--good-soft);color:var(--good)}
@@ -201,6 +202,17 @@ html.noscroll{overflow:hidden}
 .fields{display:grid;gap:12px}
 .prof-photo{display:flex;align-items:center;gap:16px}
 .prof-photo-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.look{display:grid;gap:14px;padding-top:14px;border-top:1px solid var(--line)}
+.look h3{font-family:var(--f-display);font-size:1rem;margin:0;letter-spacing:-.01em}
+.look-row{display:grid;gap:8px}
+.look .seg{display:flex}
+.look .seg button{flex:1}
+.swatches{display:flex;flex-wrap:wrap;gap:12px}
+.sw{width:36px;height:36px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer;position:relative;overflow:hidden;box-shadow:inset 0 0 0 3px var(--surface),0 0 0 1px var(--line);transition:transform 120ms var(--ease-out)}
+.sw:active{transform:scale(.92)}
+.sw.on{border-color:var(--fg)}
+.sw.custom{display:block;background:conic-gradient(#f43f5e,#f59e0b,#84cc16,#06b6d4,#6366f1,#d946ef,#f43f5e)}
+.sw.custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0}
 .acct{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:14px;border-top:1px solid var(--line)}
 .acct .status{overflow-wrap:anywhere}
 .row-actions{display:flex;justify-content:flex-end;gap:8px}
@@ -224,7 +236,7 @@ html.noscroll{overflow:hidden}
   .btn,.icon,.tab,.seg button{transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease}
   .toast,.toast[hidden]{transform:translateX(-50%);transition:opacity 150ms ease,visibility 0s 150ms}
   .toast:not([hidden]){transition:opacity 150ms ease}
-  .avatar-btn:active{transform:none}
+  .avatar-btn:active,.sw:active{transform:none}
   .layer .sheet,.layer.center .sheet,.layer.open .sheet,.layer.center.open .sheet{transform:none;transition:opacity 150ms ease}
   .layer .sheet,.layer.center .sheet{opacity:0}
   .layer.open .sheet,.layer.center.open .sheet{opacity:1}
@@ -295,6 +307,23 @@ html.noscroll{overflow:hidden}
           <label class="f">Ciudad<input name="ciudad" maxlength="60" autocomplete="address-level2"></label>
           <button class="btn">Guardar perfil</button>
         </form>
+        <section class="look" aria-labelledby="lookTitle">
+          <h3 id="lookTitle">Apariencia</h3>
+          <div class="look-row">
+            <span class="sub">Tema</span>
+            <div class="seg" role="group" aria-label="Tema">
+              <button type="button" data-act="tema" data-id="auto" aria-pressed="true">Automático</button>
+              <button type="button" data-act="tema" data-id="claro" aria-pressed="false">Claro</button>
+              <button type="button" data-act="tema" data-id="oscuro" aria-pressed="false">Oscuro</button>
+            </div>
+          </div>
+          <div class="look-row">
+            <span class="sub">Color de la app</span>
+            <div class="swatches" id="swatches" role="group" aria-label="Color de la app"></div>
+          </div>
+          <p class="sub" id="lookNote" hidden>Ajustamos el tono en los textos para que se lean bien.</p>
+          <div><button type="button" class="btn ghost sm" data-act="resetLook">Restablecer</button></div>
+        </section>
         <div class="acct">
           <div><span class="sub">Cuenta</span><br><span id="userEmail" class="status"></span></div>
           <button type="button" class="btn ghost sm" data-act="logout">Cerrar sesión</button>
