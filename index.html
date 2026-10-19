@@ -66,13 +66,32 @@ header.top{background:var(--surface);border-bottom:1px solid color-mix(in srgb,v
   .brand{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"g u" "m m"}
   .brand h1{grid-area:g}
   .brand .user{grid-area:u}
-  .brand .month{grid-area:m;justify-content:center}
+  .brand .month{grid-area:m;justify-content:center;padding-left:52px}
 }
 /* Espaciado de letras como Apple: más junto cuanto más grande, un poco más abierto cuanto más pequeño */
 body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
 h1{font-family:var(--f-display);font-size:1.5rem;line-height:1.1;margin:0;letter-spacing:-.022em;font-optical-sizing:auto}
-.month{display:flex;align-items:center;gap:6px}
-.month strong{font-family:var(--f-display);font-size:1.05rem;letter-spacing:-.012em;min-width:9.5em;text-align:center}
+/* Selector de meses: píldora con flechas, el mes abre una cuadrícula de 12 meses */
+.month{display:flex;align-items:center;gap:8px}
+.month-pill{position:relative;display:flex;align-items:center;gap:2px;background:var(--sunk);border-radius:99px;padding:3px}
+.month-pill .nav{border:0;background:transparent;width:34px;height:34px;border-radius:50%;padding:0;font-size:1.3rem;line-height:1;color:var(--muted)}
+@media (hover:hover) and (pointer:fine){.month-pill .nav:hover{background:var(--line);color:var(--fg);border-color:transparent}}
+.month-pill .nav:disabled{opacity:.35;cursor:default}
+.month-label{border:0;background:var(--surface);color:var(--fg);border-radius:99px;font:600 .98rem var(--f-display);letter-spacing:-.012em;padding:7px 14px;min-width:9.5em;cursor:pointer;box-shadow:0 1px 2px rgba(10,12,20,.08)}
+.today{border:0;background:var(--accent-soft);color:var(--accent-fg);font:600 .82rem var(--f-body);width:44px;height:30px;border-radius:99px;cursor:pointer;visibility:hidden}
+.today.show{visibility:visible}
+.month-label,.today,.mcell{transition:transform 120ms var(--ease-out)}
+.month-label:active,.today:active,.mcell:active{transform:scale(.96)}
+.mpop{--px:-50%;position:absolute;z-index:6;top:calc(100% + 8px);left:50%;width:min(320px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 40px rgba(10,12,20,.18);padding:12px;transform-origin:50% 0;transform:translateX(var(--px));transition:opacity 160ms var(--ease-out),transform 160ms var(--ease-out)}
+.mpop[hidden]{display:block!important;opacity:0;transform:translateX(var(--px)) scale(.96);visibility:hidden;pointer-events:none;transition:opacity 110ms var(--ease-out),transform 110ms var(--ease-out),visibility 0s 110ms}
+.myear{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px}
+.myear strong{font:600 1rem var(--f-display);letter-spacing:-.01em}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mcell{position:relative;border:1px solid transparent;background:var(--sunk);color:var(--fg);border-radius:10px;padding:12px 0;font:500 .92rem var(--f-body);cursor:pointer}
+.mcell.now{border-color:var(--accent-fg)}
+.mcell.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.mcell .dot{position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:currentColor;opacity:.55}
+@media (min-width:561px){.mpop{--px:0;left:auto;right:0;transform-origin:100% 0}}
 nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding-bottom:0}
 nav.tabs::-webkit-scrollbar{display:none}
 .tab{background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:500 .92rem var(--f-body);padding:10px 12px;cursor:pointer;white-space:nowrap}
@@ -236,7 +255,9 @@ html.noscroll{overflow:hidden}
   .btn,.icon,.tab,.seg button{transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease}
   .toast,.toast[hidden]{transform:translateX(-50%);transition:opacity 150ms ease,visibility 0s 150ms}
   .toast:not([hidden]){transition:opacity 150ms ease}
-  .avatar-btn:active,.sw:active{transform:none}
+  .avatar-btn:active,.sw:active,.month-label:active,.today:active,.mcell:active{transform:none}
+  .mpop,.mpop[hidden]{transform:translateX(var(--px));transition:opacity 150ms ease,visibility 0s 150ms}
+  .mpop:not([hidden]){transition:opacity 150ms ease}
   .layer .sheet,.layer.center .sheet,.layer.open .sheet,.layer.center.open .sheet{transform:none;transition:opacity 150ms ease}
   .layer .sheet,.layer.center .sheet{opacity:0}
   .layer.open .sheet,.layer.center.open .sheet{opacity:1}
@@ -255,9 +276,20 @@ html.noscroll{overflow:hidden}
     <div class="brand">
       <h1 id="greeting">Hola</h1>
       <div class="month">
-        <button class="icon" data-act="prevMonth" aria-label="Mes anterior">&lsaquo;</button>
-        <strong id="monthLabel">mes</strong>
-        <button class="icon" data-act="nextMonth" aria-label="Mes siguiente">&rsaquo;</button>
+        <div class="month-pill">
+          <button class="icon nav" data-act="prevMonth" aria-label="Mes anterior">&lsaquo;</button>
+          <button class="month-label" id="monthLabel" data-act="monthPicker" aria-haspopup="dialog" aria-expanded="false" aria-controls="monthPop">mes</button>
+          <button class="icon nav" data-act="nextMonth" aria-label="Mes siguiente">&rsaquo;</button>
+          <div class="mpop" id="monthPop" role="dialog" aria-label="Elegir mes" hidden>
+            <div class="myear">
+              <button type="button" class="icon nav" data-act="yearPrev" aria-label="Año anterior">&lsaquo;</button>
+              <strong id="pickYearLabel">2026</strong>
+              <button type="button" class="icon nav" data-act="yearNext" aria-label="Año siguiente">&rsaquo;</button>
+            </div>
+            <div class="mgrid" id="monthGrid"></div>
+          </div>
+        </div>
+        <button class="today" data-act="today" aria-label="Volver al mes actual">Hoy</button>
       </div>
       <div class="user"><button class="avatar-btn" data-act="openProfile" aria-label="Abrir tu perfil"><span class="avatar" id="topAvatar"></span></button></div>
     </div>

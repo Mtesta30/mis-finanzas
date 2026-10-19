@@ -103,6 +103,7 @@ function cleanMonth(m){
 function renderTabs(){
   document.getElementById("tabs").innerHTML=TABS.map(([id,l])=>`<button class="tab" role="tab" aria-selected="${id===tab}" data-act="tab" data-id="${id}">${l}</button>`).join("");
   const ml=mName(cur);document.getElementById("monthLabel").textContent=ml.charAt(0).toUpperCase()+ml.slice(1);
+  document.querySelector('[data-act="today"]').classList.toggle("show",cur!==mk(today));
 }
 function render(){
   updateTop();
@@ -268,8 +269,13 @@ document.addEventListener("click",e=>{
     case "resetLook":cfg.apariencia={tema:"auto",paleta:"azul",acento:""};applyLook();saveCfg();toast("Colores restablecidos");break;
     case "skipWelcome":cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));break;
     case "tab":tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }render();window.scrollTo(0,0);break;
-    case "prevMonth":cur=shift(cur,-1);render();break;
-    case "nextMonth":cur=shift(cur,1);render();break;
+    case "prevMonth":closeMonthPop();if(cur>"2000-01"){cur=shift(cur,-1);render();}break;
+    case "nextMonth":closeMonthPop();if(cur<"2099-12"){cur=shift(cur,1);render();}break;
+    case "today":closeMonthPop();cur=mk(today);render();break;
+    case "monthPicker":if(popOpen)closeMonthPop(true);else openMonthPop();break;
+    case "pickMonth":if(/^20\d\d-(0[1-9]|1[0-2])$/.test(id))cur=id;closeMonthPop(true);render();break;
+    case "yearPrev":pickYear=Math.max(2000,pickYear-1);renderMonthPop();break;
+    case "yearNext":pickYear=Math.min(2099,pickYear+1);renderMonthPop();break;
     case "tipo":movTipo=id;render();break;
     case "pagar":{const m=month(cur);m.pagados={...m.pagados};if(b.checked)m.pagados[id]=true;else delete m.pagados[id];months[cur]={...months[cur],...m};saveMonth(cur);render();break;}
     case "delMov":{if(!confirmClick(b))return;const m=month(cur);const x=m.movs.find(v=>v.id===id);if(!x)return;
@@ -429,8 +435,33 @@ function resetLayers(){
   document.documentElement.classList.remove("noscroll");$("topbar").inert=false;$("appView").inert=false;
   crop.img=null;$("cropBox").hidden=true;$("profMain").hidden=false;
 }
+/* selector de meses: cuadrícula de 12 meses que sale de la píldora */
+let pickYear=0,popOpen=false;
+function renderMonthPop(){
+  const nowK=mk(today),cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+  $("pickYearLabel").textContent=pickYear;
+  document.querySelector('#monthPop [data-act="yearPrev"]').disabled=pickYear<=2000;
+  document.querySelector('#monthPop [data-act="yearNext"]').disabled=pickYear>=2099;
+  $("monthGrid").innerHTML=Array.from({length:12},(_,i)=>{
+    const k=pickYear+"-"+String(i+1).padStart(2,"0"),has=months[k]&&months[k].movs&&months[k].movs.length;
+    return `<button type="button" class="mcell${k===nowK?" now":""}${k===cur?" on":""}" data-act="pickMonth" data-id="${k}" aria-pressed="${k===cur}">${cap(mName(k,true).replace(".","").slice(0,3))}${has?`<i class="dot" aria-hidden="true"></i>`:""}</button>`;
+  }).join("");
+}
+function openMonthPop(){
+  pickYear=+cur.slice(0,4);renderMonthPop();
+  $("monthPop").hidden=false;$("monthLabel").setAttribute("aria-expanded","true");popOpen=true;
+  const on=$("monthGrid").querySelector(".on");if(on)on.focus({preventScroll:true});
+}
+function closeMonthPop(focusBack){
+  if(!popOpen)return;
+  popOpen=false;$("monthPop").hidden=true;$("monthLabel").setAttribute("aria-expanded","false");
+  if(focusBack)$("monthLabel").focus({preventScroll:true});
+}
+document.addEventListener("click",e=>{if(popOpen&&!e.target.closest(".month-pill"))closeMonthPop();},true);
+
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape")return;
+  if(popOpen){closeMonthPop(true);return;}
   if(!$("cropBox").hidden){cancelCrop();return;}
   if($("profileSheet").classList.contains("open"))closeLayer($("profileSheet"));
   else if($("welcome").classList.contains("open")){cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));}
