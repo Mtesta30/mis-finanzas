@@ -322,9 +322,16 @@ html.noscroll{overflow:hidden}
 @keyframes wiggle{from{transform:rotate(-.55deg) scale(.985)}to{transform:rotate(.55deg) scale(.985)}}
 .editing .blk{animation:wiggle .15s ease-in-out var(--wd,0s) infinite alternate;will-change:transform;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
 .editing .blk>*{pointer-events:none}
+/* En el modo edición cada bloque se reduce a una ficha liviana: mover un panel completo (con sombras, degradados y texto) pesa demasiado para el teléfono */
+.blk-chip{display:none}
+.editing .blk>:not(.blk-chip){display:none}
+.editing .blocks{gap:10px}
+.editing .blk-chip{display:flex;align-items:center;gap:12px;padding:15px 16px;border-radius:16px;background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);box-shadow:0 1px 2px rgba(10,12,20,.06);font:600 .95rem var(--f-display);letter-spacing:-.01em;min-width:0}
+.blk-chip svg{width:22px;height:22px;flex:none;color:var(--accent-fg)}
+.blk-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* la sombra va en el propio bloque (no con filtro) y sin difuminado de fondo en las barras: así se mueve sin tirones */
 .editing .blk.dragging{animation:none;z-index:7;cursor:grabbing}
-.editing .blk.dragging>*{box-shadow:0 24px 40px -14px rgba(10,12,20,.4)}
+.editing .blk.dragging .blk-chip{box-shadow:0 14px 24px -8px rgba(10,12,20,.38);border-color:var(--accent-fg)}
 html.editmode header.top,html.editmode body::before,html.editmode .tabbar,html.editmode .editbar{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface)}
 .editbar{position:fixed;left:50%;bottom:calc(82px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:10px;width:min(560px,calc(100% - 24px));padding:10px 10px 10px 16px;border-radius:18px;background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);box-shadow:0 12px 36px rgba(10,12,20,.22)}
 @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){.editbar{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}}

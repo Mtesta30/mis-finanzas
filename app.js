@@ -13,7 +13,10 @@ const ICONS={
   deudas:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
   historial:'<path d="M5 20V10M12 20V4M19 20v-7"/>',
   mas:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
-  rail:'<path d="M15 6l-6 6 6 6"/>'
+  rail:'<path d="M15 6l-6 6 6 6"/>',
+  up:'<path d="M12 19V5m0 0l-6 6m6-6l6 6"/>',
+  down:'<path d="M12 5v14m0 0l-6-6m6 6l6-6"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>'
 };
 /* menú lateral de computadora: expandido o contraído (solo íconos); se recuerda en este dispositivo */
 try{if(localStorage.getItem("fin.rail")==="1")document.documentElement.classList.add("rail");}catch(e){}
@@ -248,6 +251,9 @@ function remindersHTML(){
 /* bloques del Resumen que se pueden reordenar: tamaño (f completo, m completo en celular, s mitad, h mitad en computadora) y orden de fábrica */
 const BLOCK_SIZE={pend:"f",remind:"f",disp:"m",ing:"s",egr:"s",aho:"m",reg:"f",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
 const BLOCK_DEFAULT=["pend","remind","disp","ing","egr","aho","reg","fijos","gastos","salmes","salbase"];
+/* en el modo edición cada bloque se reduce a una ficha liviana (ícono y nombre): moverla es mucho más fluido que mover el panel completo */
+const BLOCK_CHIP={pend:["Pagos detectados","movimientos"],remind:["Pagos por atender","fijos"],disp:["Disponible","resumen"],ing:["Ingresos","up"],egr:["Egresos","down"],aho:["Ahorrado","metas"],
+  reg:["Registrar","plus"],fijos:["Pagos fijos","fijos"],gastos:["En qué se va tu dinero","presupuestos"],salmes:["Salario del mes","deudas"],salbase:["Salario base","deudas"]};
 function blockOrder(){
   const saved=arr(cfg.widgets&&cfg.widgets.orden).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i);
   return [...saved,...BLOCK_DEFAULT.filter(id=>!saved.includes(id))];
@@ -276,7 +282,8 @@ function vResumen(){
     salbase:()=>noSal?"":`<section class="panel"><div><h2>Salario base</h2><p class="sub">Se aplica a todos los meses que no tengan un salario ajustado.</p></div>${salForm()}</section>`
   };
   const top=noSal?`<section class="panel"><div><h2>Empieza por tu salario</h2><p class="sub">Escribe cuánto recibes al mes. Después agrega tus pagos fijos (arriendo, celular, internet, transporte).</p></div>${salForm()}</section>`:"";
-  return top+`<div class="blocks" id="blocks">${blockOrder().map(id=>{const h=B[id]();return h?`<div class="blk blk-${BLOCK_SIZE[id]}" data-blk="${id}">${h}</div>`:"";}).join("")}</div>`;
+  return top+`<div class="blocks" id="blocks">${blockOrder().map(id=>{const h=B[id]();const [nm,ic]=BLOCK_CHIP[id];
+    return h?`<div class="blk blk-${BLOCK_SIZE[id]}" data-blk="${id}">${h}<div class="blk-chip" aria-hidden="true">${svg(ic)}<span>${nm}</span></div></div>`:"";}).join("")}</div>`;
 }
 function salForm(){return `<form class="row" data-form="salario"><label class="f">Salario neto mensual (COP)<input id="sal" name="salario" inputmode="numeric" value="${+cfg.salario||""}" placeholder="2500000" required></label><button class="btn">Guardar salario</button></form>`;}
 function fijoCheck(f,m){const p=!!m.pagados[f.id];return `<li><label class="check li-main"><input type="checkbox" data-act="pagar" data-id="${f.id}" ${p?"checked":""}><span><b>${esc(f.nombre)}</b><small>${esc(f.cat)}${f.dia?" · día "+f.dia:""}</small></span></label><span class="num">${money(f.monto)}</span><span class="chip ${p?"good":"warn"}">${p?"Pagado":"Pendiente"}</span></li>`;}
@@ -389,6 +396,7 @@ function enterEdit(){
   document.documentElement.classList.add("editmode");
   document.getElementById("app").classList.add("editing");document.getElementById("editBar").hidden=false;
   applyEditOrder();
+  window.scrollTo(0,0);   /* las fichas caben en una pantalla */
 }
 function cleanupEdit(){
   editing=false;press=null;
@@ -448,9 +456,11 @@ function dragTick(){
   if(d.dirty||dy){d.dirty=false;applyDrag();checkSwap();}
   d.raf=requestAnimationFrame(dragTick);
 }
-function beginDrag(blk,e){
+function beginDrag(blk,e,center){
   if(drag)return;
   drag={el:blk,id:e.pointerId,sx:e.clientX,sy:e.clientY,px:e.clientX,py:e.clientY,ox:0,oy:0,sy0:window.scrollY,dirty:true};
+  /* al entrar a editar los bloques se encogen: la ficha levantada se coloca justo debajo del dedo */
+  if(center){const r=blk.getBoundingClientRect();drag.ox=e.clientX-(r.left+r.width/2);drag.oy=e.clientY-(r.top+r.height/2);}
   blk.classList.add("dragging");measureDrag();drag.raf=requestAnimationFrame(dragTick);
 }
 function endDrag(){
@@ -467,7 +477,7 @@ document.addEventListener("pointerdown",e=>{
   if(editing){beginDrag(blk,e);return;}
   if(e.target.closest("input,select,textarea"))return;
   const p=press={blk,x:e.clientX,y:e.clientY,id:e.pointerId};
-  p.t=setTimeout(()=>{if(press!==p)return;press=null;enterEdit();beginDrag(blk,{clientX:p.x,clientY:p.y,pointerId:p.id});},HOLD_MS);
+  p.t=setTimeout(()=>{if(press!==p)return;press=null;enterEdit();beginDrag(blk,{clientX:p.x,clientY:p.y,pointerId:p.id},true);},HOLD_MS);
 });
 document.addEventListener("pointermove",e=>{
   if(press){
