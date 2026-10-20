@@ -313,6 +313,38 @@ html.noscroll{overflow:hidden}
 label.check.esp{flex:1 1 100%;align-items:flex-start;font-size:.9rem}
 label.check.esp small{display:block}
 label.check.esp input{margin-top:2px}
+/* Rachas y logros */
+.rac{gap:10px}
+.rac-head{display:flex;align-items:center;gap:14px}
+.rac-flame{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--sunk);color:var(--muted);flex:none}
+.rac-flame svg{width:28px;height:28px}
+.rac-flame.lit{background:var(--accent-soft);color:var(--accent-fg)}
+.rac-num{display:grid;gap:2px}
+.rac-num .val{font-family:var(--f-num);font-size:2rem;font-weight:600;line-height:1.1;letter-spacing:-.035em}
+.rac-num .val small{font-size:.9rem;font-weight:500;color:var(--muted);letter-spacing:0}
+.rac-days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.rd{display:grid;place-items:center;height:30px;border-radius:10px;background:var(--sunk);color:var(--muted);font:600 .75rem var(--f-body)}
+.rd.on{background:var(--accent);color:var(--accent-ink)}
+.rac-bdgs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.bdg{display:grid;justify-items:center;gap:4px;padding:8px 2px;border:0;border-radius:14px;background:transparent;color:var(--muted);cursor:pointer;opacity:.45;transition:transform 120ms var(--ease-out)}
+.bdg:active{transform:scale(.95)}
+.bdg.on{opacity:1;color:var(--accent-fg)}
+.bi{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:var(--sunk)}
+.bdg.on .bi{background:var(--accent-soft)}
+.bi svg{width:22px;height:22px}
+.bn{font-size:.66rem;line-height:1.15;text-align:center;color:var(--fg);font-weight:500;letter-spacing:.005em}
+.bdg:not(.on) .bn{color:var(--muted)}
+/* aviso de logro nuevo y lluvia de monedas */
+.achv{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;z-index:40;display:flex;align-items:center;gap:12px;width:min(420px,calc(100% - 24px));padding:12px 16px;border-radius:18px;background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);box-shadow:0 14px 36px rgba(10,12,20,.24);transform:translate(-50%,-140%);opacity:0;transition:transform 380ms cubic-bezier(.32,.72,0,1),opacity 240ms ease}
+.achv.show{transform:translate(-50%,0);opacity:1}
+.achv-ic{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:var(--accent-soft);color:var(--accent-fg);flex:none}
+.achv-ic svg{width:22px;height:22px}
+.achv-tx{display:grid;gap:1px;min-width:0}
+.achv-tx b{font-size:.95rem;letter-spacing:-.01em}
+.achv-tx span{font-size:.82rem;color:var(--muted)}
+.coins{position:fixed;inset:0;z-index:39;pointer-events:none;overflow:hidden}
+.coin{position:absolute;top:0;left:var(--x);width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a0,#e2a82e 60%,#b9801a);box-shadow:inset 0 0 0 2px rgba(255,255,255,.35);transform:translate3d(0,-10vh,0);animation:coinFall var(--d) cubic-bezier(.4,0,.9,.6) var(--t) forwards}
+@keyframes coinFall{to{transform:translate3d(0,112vh,0) rotate(var(--r))}}
 /* Ritmo del día */
 .rit{gap:10px}
 .rit-wrap{display:flex;align-items:center;gap:16px}
@@ -456,7 +488,8 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   #app.go-r,#app.go-l{animation:tabFade 150ms ease}
   /* Con "reducir movimiento" las siluetas no se desplazan: solo respiran (cambian de tono muy despacio) */
   .fi{top:var(--y);transform:rotate(var(--r));will-change:auto;animation:breathe calc(var(--d) * .6) ease-in-out var(--t) infinite alternate}
-  .modeseg button:active,.qbtn:active{transform:none}
+  .modeseg button:active,.qbtn:active,.bdg:active{transform:none}
+  .achv{transform:translate(-50%,0);transition:opacity 200ms ease}
   /* sin temblor: los bloques se marcan con un borde punteado */
   .editing .blk{animation:none;outline:2px dashed var(--accent-fg);outline-offset:3px;border-radius:22px}
   .avatar-btn:active,.sw:active,.month-label:active,.today:active,.mcell:active{transform:none}
@@ -546,6 +579,11 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   <button type="button" class="btn ghost sm" data-act="editReset">Restablecer</button>
   <button type="button" class="btn sm" data-act="editDone">Listo</button>
 </div>
+<div class="achv" id="achv" hidden role="status" aria-live="polite">
+  <span class="achv-ic" id="achvIc" aria-hidden="true"></span>
+  <div class="achv-tx"><b id="achvT"></b><span id="achvD"></span></div>
+</div>
+<div class="coins" id="coins" hidden aria-hidden="true"></div>
 <div class="toast" id="toast" hidden></div>
 
 <!-- Perfil: hoja que sube desde abajo (en pantallas anchas, ventana centrada) -->

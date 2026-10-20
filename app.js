@@ -14,6 +14,10 @@ const ICONS={
   historial:'<path d="M5 20V10M12 20V4M19 20v-7"/>',
   mas:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
   rail:'<path d="M15 6l-6 6 6 6"/>',
+  flame:'<path d="M8.500 14.500A2.500 2.500 0 0 0 11 12c0-1.380-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.500 2 4.900 4 6.500 2 1.600 3 3.500 3 5.500a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.500 2.500 0 0 0 2.500 2.500z"/>',
+  star:'<path d="M12 3.500l2.600 5.400 5.900.8-4.300 4.200 1 5.900L12 16.900 6.800 19.800l1-5.900-4.300-4.200 5.900-.8z"/>',
+  check:'<path d="M5 12.500l4.500 4.500L19 7.500"/>',
+  coin:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.500"/>',
   up:'<path d="M12 19V5m0 0l-6 6m6-6l6 6"/>',
   down:'<path d="M12 5v14m0 0l-6-6m6 6l6-6"/>',
   plus:'<path d="M12 5v14M5 12h14"/>'
@@ -27,7 +31,7 @@ const today=new Date();
 let cur=mk(today), tab="resumen", movTipo="gasto", pendingRender=false;
 try{const t=localStorage.getItem("fin.tab"); if(t&&TABS.some(x=>x[0]===t)) tab=t; if(localStorage.getItem("fin.mov")==="ingreso") movTipo="ingreso";}catch(e){}
 
-function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[],perfil:{nombre:"",apodo:"",telefono:"",nacimiento:"",ciudad:"",foto:"",omitido:false},apariencia:{tema:"auto",paleta:"azul",acento:""},categorias:{gasto:[],ingreso:[],ocultas:[]},widgets:{orden:[]}};}
+function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[],perfil:{nombre:"",apodo:"",telefono:"",nacimiento:"",ciudad:"",foto:"",omitido:false},apariencia:{tema:"auto",paleta:"azul",acento:""},categorias:{gasto:[],ingreso:[],ocultas:[]},widgets:{orden:[]},logros:{vistos:[],libres:[],init:false}};}
 function mk(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
 function shift(k,n){const [y,m]=k.split("-").map(Number);return mk(new Date(y,m-1+n,1));}
 function mName(k,short){const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("es-CO",short?{month:"short"}:{month:"long",year:"numeric"});}
@@ -67,14 +71,15 @@ function write(docId,data){
   }).catch(()=>toast("No se pudo guardar el cambio. Revisa tu conexión e inténtalo de nuevo.")).finally(()=>{pending--;});
   queues[docId]=p;return p;
 }
-function saveCfg(){return write("config",JSON.parse(JSON.stringify(cfg)));}
+function saveCfg(){const p=write("config",JSON.parse(JSON.stringify(cfg)));setTimeout(checkLogros,0);return p;}
 function saveMonth(k){
   const m=month(k);
   const body={movs:m.movs,pagados:m.pagados,salario:+cfg.salario||0,fijosTotal:sum(cfg.fijos.map(f=>f.monto))};
   if(m.salarioMes!=null)body.salarioMes=m.salarioMes;
   if(k<mk(today)&&months[k]&&months[k].salario!==undefined){body.salario=months[k].salario;body.fijosTotal=months[k].fijosTotal;}
   months[k]=body;
-  return write("m-"+k,JSON.parse(JSON.stringify(body)));
+  const p=write("m-"+k,JSON.parse(JSON.stringify(body)));setTimeout(checkLogros,0);
+  return p;
 }
 async function loadAll(){
   const who=uid;
@@ -83,7 +88,7 @@ async function loadAll(){
   if(error){offline=true;render();return;}
   const c=defCfg(), ms={};
   (data||[]).forEach(r=>{if(r.doc_id==="config")Object.assign(c,cleanCfg(r.data||{}));else if(/^m-\d{4}-\d{2}$/.test(r.doc_id))ms[r.doc_id.slice(2)]=cleanMonth(r.data||{});});
-  cfg=c;months=ms;offline=false;ready=true;applyLook();render();maybeWelcome();loadPending();
+  cfg=c;months=ms;offline=false;ready=true;applyLook();render();maybeWelcome();loadPending();checkLogros();
 }
 
 /* ---------- validación de datos leídos ---------- */
@@ -113,11 +118,17 @@ function cleanCategorias(c){
   const ocultas=arr(c.ocultas).map(v=>String(v??"")).filter((v,i,a)=>all.has(v)&&v!=="Otros"&&v!=="Ahorro"&&a.indexOf(v)===i).slice(0,80);
   return {gasto,ingreso,ocultas};
 }
+function cleanLogros(l){
+  l=l&&typeof l==="object"?l:{};
+  return {vistos:arr(l.vistos).map(v=>String(v??"")).filter((id,i,a)=>LOGROS.some(x=>x[0]===id)&&a.indexOf(id)===i),
+    libres:arr(l.libres).map(v=>String(v??"")).filter(s=>/^\d{4}-\d{2}-\d{2}$/.test(s)).slice(-120),init:l.init===true};
+}
 function cleanCfg(c){
   const categorias=cleanCategorias(c.categorias);
   const pres={};Object.entries(c.presupuestos&&typeof c.presupuestos==="object"?c.presupuestos:{}).forEach(([k,v])=>{if(CATS.includes(k)||categorias.gasto.includes(k))pres[k]=n0(v);});
   return {salario:n0(c.salario),presupuestos:pres,perfil:cleanPerfil(c.perfil),apariencia:cleanApariencia(c.apariencia),categorias,
     widgets:{orden:arr(c.widgets&&c.widgets.orden).map(v=>String(v??"")).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i)},
+    logros:cleanLogros(c.logros),
     fijos:arr(c.fijos).map(f=>({id:safeId(f.id),nombre:str(f.nombre),monto:n0(f.monto),cat:str(f.cat,40),dia:Math.min(31,Math.max(0,parseInt(f.dia)||0))||null})),
     metas:arr(c.metas).map(g=>({id:safeId(g.id),nombre:str(g.nombre),objetivo:n0(g.objetivo),ahorrado:n0(g.ahorrado),fecha:/^\d{4}-\d{2}$/.test(g.fecha)?g.fecha:""})),
     deudas:arr(c.deudas).map(d=>({id:safeId(d.id),nombre:str(d.nombre),saldo:n0(d.saldo),inicial:n0(d.inicial),cuota:n0(d.cuota),tasa:str(d.tasa,10)}))};
@@ -251,11 +262,11 @@ function remindersHTML(){
 }
 
 /* bloques del Resumen que se pueden reordenar: tamaño (f completo, m completo en celular, s mitad, h mitad en computadora) y orden de fábrica */
-const BLOCK_SIZE={pend:"f",remind:"f",disp:"m",rit:"h",ing:"s",egr:"s",aho:"m",reg:"h",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
-const BLOCK_DEFAULT=["pend","remind","disp","rit","ing","egr","aho","reg","fijos","gastos","salmes","salbase"];
+const BLOCK_SIZE={pend:"f",remind:"f",disp:"m",rit:"h",ing:"s",egr:"s",aho:"m",reg:"h",rac:"h",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
+const BLOCK_DEFAULT=["pend","remind","disp","rit","ing","egr","aho","reg","rac","fijos","gastos","salmes","salbase"];
 /* en el modo edición cada bloque se reduce a una ficha liviana (ícono y nombre): moverla es mucho más fluido que mover el panel completo */
 const BLOCK_CHIP={pend:["Pagos detectados","movimientos"],remind:["Pagos por atender","fijos"],disp:["Disponible","resumen"],rit:["Ritmo del día","presupuestos"],ing:["Ingresos","up"],egr:["Egresos","down"],aho:["Ahorrado","metas"],
-  reg:["Registrar","plus"],fijos:["Pagos fijos","fijos"],gastos:["En qué se va tu dinero","presupuestos"],salmes:["Salario del mes","deudas"],salbase:["Salario base","deudas"]};
+  reg:["Registrar","plus"],rac:["Rachas y logros","flame"],fijos:["Pagos fijos","fijos"],gastos:["En qué se va tu dinero","presupuestos"],salmes:["Salario del mes","deudas"],salbase:["Salario base","deudas"]};
 function blockOrder(){
   const order=arr(cfg.widgets&&cfg.widgets.orden).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i);
   /* los bloques nuevos que aún no están en tu orden guardado entran junto a su vecino de fábrica, no al final */
@@ -304,7 +315,7 @@ function vResumen(){
   const B={
     pend:pendHTML,
     remind:remindersHTML,
-    disp:()=>k.disp, rit:ritHTML, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho,
+    disp:()=>k.disp, rit:ritHTML, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho, rac:racHTML,
     reg:()=>`<section class="panel"><div><h2>Registrar</h2><p class="sub">Anota un movimiento de ${mName(cur)}.</p></div>
       <div class="quickrow"><button type="button" class="qbtn q-gasto" data-act="goMov" data-id="gasto">Registrar gasto</button><button type="button" class="qbtn q-ingreso" data-act="goMov" data-id="ingreso">Registrar ingreso</button></div></section>`,
     fijos:()=>`<section class="panel"><div class="split"><h2>Pagos fijos</h2><span class="chip ${pendF.length?"warn":"good"}">${cfg.fijos.length?(pendF.length?pendF.length+" pendientes":"Todos pagados"):"Sin pagos fijos"}</span></div>
@@ -417,6 +428,83 @@ function vHist(){
   ${ks.slice().reverse().map(k=>{const t=totals(k);const has=months[k]||k===mk(today);return `<tr><td>${mName(k)}</td><td class="num">${has?money(t.ingresos):"-"}</td><td class="num">${has?money(t.egresos):"-"}</td><td class="num">${has?money(t.ahorro):"-"}</td><td class="num ${t.disp<0?"":"in"}" style="${t.disp<0?"color:var(--bad)":""}">${has?money(t.disp):"-"}</td></tr>`;}).join("")}
   </tbody></table></div>
   <p class="sub">Los meses sin registros aparecen con guion.</p></section>`;
+}
+
+/* ---------- rachas y logros ---------- */
+const dayNum=s=>{const [y,m,d]=String(s).split("-").map(Number);return Math.round(Date.UTC(y,m-1,d)/86400000);};
+const LOGROS=[
+  ["primero","Primer paso","Registra tu primer movimiento","star",c=>c.total>=1],
+  ["r7","Una semana","7 días seguidos registrando","flame",c=>c.best>=7],
+  ["r30","Un mes entero","30 días seguidos registrando","flame",c=>c.best>=30],
+  ["c100","Constante","100 movimientos registrados","historial",c=>c.total>=100],
+  ["meta","Meta cumplida","Completa una meta de ahorro","metas",c=>c.metaOk],
+  ["verde","Mes en verde","Cierra un mes con disponible positivo","check",c=>c.verde],
+  ["ah10","Ahorrador","Ahorra el 10 % de tus ingresos en un mes","coin",c=>c.ah10],
+  ["deuda","Libre de una deuda","Paga una deuda por completo","deudas",c=>c.deudaOk]
+];
+/* días con movimientos (más los días que marcas como "no gasté nada"); la racha son los días seguidos que terminan hoy o ayer */
+function rachaInfo(){
+  const libres=(cfg.logros&&cfg.logros.libres)||[],s=new Set(libres.map(dayNum)),t=dayNum(ymd(new Date()));
+  let total=0;
+  for(const k in months)for(const x of (months[k].movs||[])){total++;if(x.fecha)s.add(dayNum(x.fecha));}
+  let streak=0,d=s.has(t)?t:(s.has(t-1)?t-1:null);
+  if(d!==null)while(s.has(d)){streak++;d--;}
+  let best=0,run=0,prev=null;
+  for(const n of [...s].filter(n=>n<=t).sort((a,b)=>a-b)){run=(prev!==null&&n===prev+1)?run+1:1;best=Math.max(best,run);prev=n;}
+  return {streak,best,total,hoy:s.has(t),days:[6,5,4,3,2,1,0].map(i=>({on:s.has(t-i),l:["D","L","M","M","J","V","S"][new Date((t-i)*86400000).getUTCDay()]}))};
+}
+function logroCtx(){
+  const r=rachaInfo(),cm=mk(today);
+  let verde=false,ah10=false;
+  for(const k in months){
+    const m=months[k];if(!m||!(m.movs||[]).length)continue;
+    const t=totals(k);
+    if(k<cm&&(m.movs||[]).length>=5&&t.ingresos>0&&t.disp>=0)verde=true;
+    if(t.ingresos>0&&t.ahorro/t.ingresos>=0.1)ah10=true;
+  }
+  return {best:r.best,total:r.total,verde,ah10,
+    metaOk:cfg.metas.some(g=>g.objetivo>0&&g.ahorrado>=g.objetivo),deudaOk:cfg.deudas.some(d=>d.inicial>0&&d.saldo<=0)};
+}
+let achvTimer,logroBusy=false;
+function checkLogros(){
+  if(!ready||logroBusy||!cfg.logros)return;
+  logroBusy=true;
+  try{
+    const c=logroCtx(),on=LOGROS.filter(l=>l[4](c)),seen=new Set(cfg.logros.vistos),nuevos=on.filter(l=>!seen.has(l[0]));
+    if(!cfg.logros.init){cfg.logros={...cfg.logros,init:true,vistos:on.map(l=>l[0])};saveCfg();return;}   /* la primera vez no se celebra lo que ya tenías */
+    if(!nuevos.length)return;
+    cfg.logros={...cfg.logros,vistos:[...seen,...nuevos.map(l=>l[0])]};saveCfg();
+    celebrate(nuevos);
+  }finally{logroBusy=false;}
+}
+function celebrate(list){
+  const [,nm,desc,ic]=list[0],el=document.getElementById("achv");
+  document.getElementById("achvIc").innerHTML=svg(ic);
+  document.getElementById("achvT").textContent="Nuevo logro: "+nm+(list.length>1?` (+${list.length-1} más)`:"");
+  document.getElementById("achvD").textContent=desc;
+  el.hidden=false;void el.offsetWidth;el.classList.add("show");
+  clearTimeout(achvTimer);achvTimer=setTimeout(()=>{el.classList.remove("show");setTimeout(()=>{el.hidden=true;},400);},4500);
+  if(!matchMedia("(prefers-reduced-motion:reduce)").matches)coinRain();
+}
+function coinRain(){
+  const box=document.getElementById("coins");box.innerHTML="";
+  for(let i=0;i<18;i++){
+    const c=document.createElement("i");c.className="coin";
+    c.style.cssText=`--x:${Math.round(Math.random()*96)}%;--d:${(1.5+Math.random()*1.2).toFixed(2)}s;--t:${(Math.random()*.6).toFixed(2)}s;--r:${Math.round(180+Math.random()*360)}deg`;
+    box.appendChild(c);
+  }
+  box.hidden=false;setTimeout(()=>{box.hidden=true;box.innerHTML="";},3300);
+}
+function racHTML(){
+  const r=rachaInfo(),c=logroCtx(),on=LOGROS.filter(l=>l[4](c)).map(l=>l[0]);
+  const msg=r.streak===0?"Registra un movimiento hoy para empezar tu racha.":!r.hoy?"Registra algo hoy para mantener tu racha.":r.streak>=7?"¡Vas muy bien! Sigue así.":"Hoy ya cuenta. Mañana, un día más.";
+  return `<div class="kpi rac">
+    <div class="rac-head"><span class="rac-flame${r.streak?" lit":""}">${svg("flame")}</span><div class="rac-num"><span class="val">${r.streak} <small>${r.streak===1?"día":"días"}</small></span><span class="note">de racha · tu mejor: ${r.best}</span></div></div>
+    <div class="rac-days" aria-hidden="true">${r.days.map(d=>`<span class="rd${d.on?" on":""}">${d.l}</span>`).join("")}</div>
+    <p class="sub">${msg}</p>
+    ${r.hoy?"":`<button type="button" class="btn ghost sm" data-act="diaLibre">Hoy no gasté nada</button>`}
+    <div class="rac-bdgs">${LOGROS.map(l=>`<button type="button" class="bdg${on.includes(l[0])?" on":""}" data-act="bdg" data-id="${l[0]}" aria-label="${esc(l[1])}${on.includes(l[0])?"":" (bloqueado)"}"><span class="bi">${svg(l[3])}</span><span class="bn">${esc(l[1])}</span></button>`).join("")}</div>
+    <span class="note">${on.length} de ${LOGROS.length} logros</span></div>`;
 }
 
 /* ---------- Resumen: modo edición (mantener presionado y arrastrar los bloques) ---------- */
@@ -571,6 +659,8 @@ document.addEventListener("click",e=>{
       if(changed)playTab(to>from?"go-r":"go-l");
       break;}
     case "more":openMore(b);break;
+    case "diaLibre":{const h=ymd(new Date());cfg.logros={...cfg.logros,libres:[...cfg.logros.libres.filter(x=>x!==h),h].slice(-120)};saveCfg();render();toast("Día registrado. Tu racha sigue.");break;}
+    case "bdg":{const l=LOGROS.find(x=>x[0]===id);if(l){const got=cfg.logros.vistos.includes(l[0]);toast(l[1]+": "+l[2]+(got?"":" (aún no lo logras)"));}break;}
     case "editDone":exitEdit();break;
     case "editReset":cfg.widgets={orden:[]};saveCfg();cleanupEdit();render();enterEdit();toast("Orden original restablecido");break;
     case "rail":{const de=document.documentElement;de.classList.add("railanim");setTimeout(()=>de.classList.remove("railanim"),300);const on=de.classList.toggle("rail");try{localStorage.setItem("fin.rail",on?"1":"0")}catch(_){ }renderTabs();const nb=document.querySelector(".collapse-btn");if(nb)nb.focus({preventScroll:true});break;}
