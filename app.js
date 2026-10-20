@@ -2,8 +2,8 @@
 const CATS=["Vivienda","Servicios","Comida","Transporte","Salud","Educación","Entretenimiento","Ropa","Suscripciones","Deudas","Ahorro","Otros"];
 const INCATS=["Salario extra","Freelance","Ventas","Bonificación","Intereses","Otros"];
 /* [id, nombre, nombre corto para la barra inferior]. En el celular solo las 4 primeras van a la vista; el resto, en "Más". */
-const TABS=[["resumen","Resumen"],["movimientos","Movimientos"],["presupuestos","Presupuestos"],["metas","Metas de ahorro","Metas"],["fijos","Pagos fijos"],["deudas","Deudas"],["historial","Historial"]];
-const MORE=["fijos","deudas","historial"];
+const TABS=[["resumen","Resumen"],["movimientos","Movimientos"],["presupuestos","Presupuestos"],["metas","Metas de ahorro","Metas"],["fijos","Pagos fijos"],["deudas","Deudas"],["historial","Historial"],["logros","Rachas y logros","Logros"]];
+const MORE=["fijos","deudas","historial","logros"];
 const ICONS={
   resumen:'<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
   movimientos:'<path d="M7 4v14m0 0l-3-3m3 3l3-3M17 20V6m0 0l-3 3m3-3l3 3"/>',
@@ -18,12 +18,24 @@ const ICONS={
   star:'<path d="M12 3.500l2.600 5.400 5.900.8-4.300 4.200 1 5.900L12 16.900 6.800 19.800l1-5.900-4.300-4.200 5.900-.8z"/>',
   check:'<path d="M5 12.500l4.500 4.500L19 7.500"/>',
   coin:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.500"/>',
+  plane:'<path d="M17.800 19.200L16 11l3.500-3.500C21 6 21.500 4 21 3c-1-.5-3 0-4.500 1.500L13 8 4.800 6.200c-.5-.1-.9.1-1.100.5l-.3.5c-.2.5-.1 1 .3 1.300L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.500 5.300c.3.4.8.5 1.300.3l.5-.2c.4-.3.6-.7.5-1.200z"/>',
+  home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  car:'<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.700-1.500-1.900C18.700 10.600 16 10 16 10s-1.300-1.400-2.200-2.300c-.5-.4-1.100-.7-1.800-.7H5c-.6 0-1.100.4-1.400.9l-1.400 2.900A3.700 3.700 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+  book:'<path d="M4 19.500A2.500 2.500 0 0 1 6.500 17H20"/><path d="M6.500 2H20v20H6.500A2.500 2.500 0 0 1 4 19.500v-15A2.500 2.500 0 0 1 6.500 2z"/>',
+  phone:'<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  gift:'<path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.500a2.500 2.500 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.500a2.500 2.500 0 0 0 0-5C13 2 12 7 12 7z"/>',
+  heart:'<path d="M19 14c1.490-1.460 3-3.210 3-5.500A5.500 5.500 0 0 0 16.500 3c-1.760 0-3 .5-4.500 2-1.500-1.500-2.740-2-4.500-2A5.500 5.500 0 0 0 2 8.500c0 2.300 1.500 4.050 3 5.500l7 7z"/>',
   up:'<path d="M12 19V5m0 0l-6 6m6-6l6 6"/>',
   down:'<path d="M12 5v14m0 0l-6-6m6 6l6-6"/>',
   plus:'<path d="M12 5v14M5 12h14"/>'
 };
 /* menú lateral de computadora: expandido o contraído (solo íconos); se recuerda en este dispositivo */
 try{if(localStorage.getItem("fin.rail")==="1")document.documentElement.classList.add("rail");}catch(e){}
+ICONS.logros=ICONS.flame;
+/* íconos y colores que se pueden elegir para cada meta de ahorro */
+const GOAL_ICONS=["metas","plane","home","car","book","phone","shield","gift","heart"];
+const GOAL_COLORS=["#2f5bea","#1e8e5a","#d6336c","#d97706","#7a5cfa","#0e8f9c"];
 const svg=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
 let sb=null, uid=null, ready=false, offline=false, pending=0;
 let cfg=defCfg(), months={};
@@ -130,12 +142,13 @@ function cleanCfg(c){
     widgets:{orden:arr(c.widgets&&c.widgets.orden).map(v=>String(v??"")).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i)},
     logros:cleanLogros(c.logros),
     fijos:arr(c.fijos).map(f=>({id:safeId(f.id),nombre:str(f.nombre),monto:n0(f.monto),cat:str(f.cat,40),dia:Math.min(31,Math.max(0,parseInt(f.dia)||0))||null})),
-    metas:arr(c.metas).map(g=>({id:safeId(g.id),nombre:str(g.nombre),objetivo:n0(g.objetivo),ahorrado:n0(g.ahorrado),fecha:/^\d{4}-\d{2}$/.test(g.fecha)?g.fecha:""})),
+    metas:arr(c.metas).map(g=>({id:safeId(g.id),nombre:str(g.nombre),objetivo:n0(g.objetivo),ahorrado:n0(g.ahorrado),fecha:/^\d{4}-\d{2}$/.test(g.fecha)?g.fecha:"",
+      icono:GOAL_ICONS.includes(g.icono)?g.icono:"metas",color:GOAL_COLORS.includes(g.color)?g.color:"",redondeo:[500,1000,5000].includes(+g.redondeo)?+g.redondeo:0})),
     deudas:arr(c.deudas).map(d=>({id:safeId(d.id),nombre:str(d.nombre),saldo:n0(d.saldo),inicial:n0(d.inicial),cuota:n0(d.cuota),tasa:str(d.tasa,10)}))};
 }
 function cleanMonth(m){
   const o={movs:arr(m.movs).map(x=>{const r={id:safeId(x.id),tipo:["gasto","ingreso","ahorro"].includes(x.tipo)?x.tipo:"gasto",monto:n0(x.monto),cat:str(x.cat,40),desc:str(x.desc),fecha:/^\d{4}-\d{2}-\d{2}$/.test(x.fecha)?x.fecha:""};
-      if(x.metaId)r.metaId=safeId(x.metaId);if(x.deudaId)r.deudaId=safeId(x.deudaId);if(x.esp===true&&r.tipo==="gasto")r.esp=true;return r;}),pagados:{}};
+      if(x.metaId)r.metaId=safeId(x.metaId);if(x.deudaId)r.deudaId=safeId(x.deudaId);if(x.esp===true&&r.tipo==="gasto")r.esp=true;if(x.red===true&&r.tipo==="ahorro")r.red=true;return r;}),pagados:{}};
   Object.keys(m.pagados&&typeof m.pagados==="object"?m.pagados:{}).forEach(k=>{if(/^[a-z0-9]{1,40}$/i.test(k))o.pagados[k]=true;});
   if(m.salario!=null)o.salario=n0(m.salario);if(m.fijosTotal!=null)o.fijosTotal=n0(m.fijosTotal);if(m.salarioMes!=null)o.salarioMes=n0(m.salarioMes);
   return o;
@@ -162,7 +175,7 @@ function render(){
   const app=document.getElementById("app");
   if(offline){app.innerHTML=`<div class="notice">No se pudieron cargar tus datos. Revisa tu conexión a internet y vuelve a abrir la app.</div>`;return;}
   if(!ready){app.innerHTML=`<div class="empty">Cargando tus datos...</div>`;return;}
-  app.innerHTML=({resumen:vResumen,movimientos:vMov,fijos:vFijos,presupuestos:vPres,metas:vMetas,deudas:vDeudas,historial:vHist})[tab]();
+  app.innerHTML=({resumen:vResumen,movimientos:vMov,fijos:vFijos,presupuestos:vPres,metas:vMetas,deudas:vDeudas,historial:vHist,logros:vLogros})[tab]();
   if(editing)applyEditOrder();
 }
 
@@ -262,11 +275,11 @@ function remindersHTML(){
 }
 
 /* bloques del Resumen que se pueden reordenar: tamaño (f completo, m completo en celular, s mitad, h mitad en computadora) y orden de fábrica */
-const BLOCK_SIZE={pend:"f",remind:"f",disp:"m",rit:"h",ing:"s",egr:"s",aho:"m",reg:"h",rac:"h",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
-const BLOCK_DEFAULT=["pend","remind","disp","rit","ing","egr","aho","reg","rac","fijos","gastos","salmes","salbase"];
+const BLOCK_SIZE={pend:"f",remind:"f",disp:"m",rit:"h",ing:"s",egr:"s",aho:"m",reg:"h",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
+const BLOCK_DEFAULT=["pend","remind","disp","rit","ing","egr","aho","reg","fijos","gastos","salmes","salbase"];
 /* en el modo edición cada bloque se reduce a una ficha liviana (ícono y nombre): moverla es mucho más fluido que mover el panel completo */
 const BLOCK_CHIP={pend:["Pagos detectados","movimientos"],remind:["Pagos por atender","fijos"],disp:["Disponible","resumen"],rit:["Ritmo del día","presupuestos"],ing:["Ingresos","up"],egr:["Egresos","down"],aho:["Ahorrado","metas"],
-  reg:["Registrar","plus"],rac:["Rachas y logros","flame"],fijos:["Pagos fijos","fijos"],gastos:["En qué se va tu dinero","presupuestos"],salmes:["Salario del mes","deudas"],salbase:["Salario base","deudas"]};
+  reg:["Registrar","plus"],fijos:["Pagos fijos","fijos"],gastos:["En qué se va tu dinero","presupuestos"],salmes:["Salario del mes","deudas"],salbase:["Salario base","deudas"]};
 function blockOrder(){
   const order=arr(cfg.widgets&&cfg.widgets.orden).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i);
   /* los bloques nuevos que aún no están en tu orden guardado entran junto a su vecino de fábrica, no al final */
@@ -315,7 +328,7 @@ function vResumen(){
   const B={
     pend:pendHTML,
     remind:remindersHTML,
-    disp:()=>k.disp, rit:ritHTML, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho, rac:racHTML,
+    disp:()=>k.disp, rit:ritHTML, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho,
     reg:()=>`<section class="panel"><div><h2>Registrar</h2><p class="sub">Anota un movimiento de ${mName(cur)}.</p></div>
       <div class="quickrow"><button type="button" class="qbtn q-gasto" data-act="goMov" data-id="gasto">Registrar gasto</button><button type="button" class="qbtn q-ingreso" data-act="goMov" data-id="ingreso">Registrar ingreso</button></div></section>`,
     fijos:()=>`<section class="panel"><div class="split"><h2>Pagos fijos</h2><span class="chip ${pendF.length?"warn":"good"}">${cfg.fijos.length?(pendF.length?pendF.length+" pendientes":"Todos pagados"):"Sin pagos fijos"}</span></div>
@@ -391,11 +404,46 @@ function vMetas(){
   </form></section>
   ${cfg.metas.length?`<div class="grid2">${cfg.metas.map(g=>{const p=g.objetivo?Math.min(100,g.ahorrado/g.objetivo*100):0;const falta=Math.max(0,g.objetivo-g.ahorrado);
     let ritmo="";if(g.fecha&&falta>0){const [y,mm]=g.fecha.split("-").map(Number);const n=(y-today.getFullYear())*12+(mm-1-today.getMonth())+1;ritmo=n>0?`Necesitas ${money(falta/n)} al mes para llegar en ${mName(g.fecha)}.`:"La fecha límite ya pasó.";}
-    return `<section class="panel"><div class="split"><h2>${esc(g.nombre)}</h2><span class="chip ${p>=100?"good":""}">${Math.round(p)}%</span></div>
-    <div class="bar good"><i style="width:${p}%"></i></div>
-    <div class="split"><span class="num">${money(g.ahorrado)}</span><span class="sub">de ${money(g.objetivo)}</span></div>
+    const eta=metaEta(g),C=2*Math.PI*42;
+    const etaTxt=eta.done?"¡Meta cumplida!":eta.none?"Haz tu primer aporte y te calculo cuándo llegas.":`Con tu ritmo (${money(eta.avg)} al mes) llegas en ${mName(eta.eta)}.`+(g.fecha?(eta.eta<=g.fecha?" ¡A tiempo!":""):"");
+    const redMes=sum((month(cur).movs||[]).filter(x=>x.red&&x.metaId===g.id).map(x=>x.monto));
+    const ics=GOAL_ICONS.map(ic=>`<button type="button" class="mic${g.icono===ic?" on":""}" data-act="metaIcon" data-id="${g.id}:${ic}" aria-label="Ícono ${ic}" aria-pressed="${g.icono===ic}">${svg(ic)}</button>`).join("");
+    const cols=[["",""],...GOAL_COLORS.map(c=>[c,c])].map(([c],i)=>`<button type="button" class="msw${(g.color||"")===c?" on":""}" data-act="metaColor" data-id="${g.id}:${i}" style="background:${c||"var(--accent)"}" aria-label="Color ${i+1}" aria-pressed="${(g.color||"")===c}"></button>`).join("");
+    return `<section class="panel meta" style="${g.color?`--mc:${g.color};`:""}">
+    <div class="meta-top"><div class="ringbox"><svg class="ring big" viewBox="0 0 100 100" aria-hidden="true"><circle class="r-bg" cx="50" cy="50" r="42"/><circle class="r-fg mfg" cx="50" cy="50" r="42" stroke-dasharray="${(p/100*C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 50 50)"/></svg><span class="meta-ic">${svg(g.icono||"metas")}</span></div>
+      <div class="meta-info"><div class="split"><h2>${esc(g.nombre)}</h2>${p>=100?`<span class="chip good">Cumplida</span>`:`<span class="chip">${Math.round(p)}%</span>`}</div><span class="num meta-amt">${money(g.ahorrado)}</span><span class="sub">de ${money(g.objetivo)}</span></div></div>
+    <p class="sub meta-eta">${etaTxt}</p>
     ${ritmo?`<p class="sub">${ritmo}</p>`:""}
-    <form class="row" data-form="aporte" data-id="${g.id}"><label class="f">Aporte (COP)<input id="ap-${g.id}" name="monto" inputmode="numeric" placeholder="100000" required></label><button class="btn ghost">Aportar</button><button type="button" class="icon" data-act="delMeta" data-id="${g.id}">Eliminar</button></form></section>`;}).join("")}</div>`:`<div class="empty">Crea tu primera meta. Un buen inicio es un fondo de emergencia de 3 a 6 meses de gastos.</div>`}`;
+    ${g.redondeo?`<p class="sub">Redondeo de este mes: <b class="num">+${money(redMes)}</b></p>`:""}
+    <form class="row" data-form="aporte" data-id="${g.id}"><label class="f">Aporte (COP)<input id="ap-${g.id}" name="monto" inputmode="numeric" placeholder="100000" required></label><button class="btn ghost">Aportar</button><button type="button" class="icon" data-act="delMeta" data-id="${g.id}">Eliminar</button></form>
+    <details class="mp" data-id="${g.id}"${metaOpen.has(g.id)?" open":""}><summary>Personalizar</summary><div class="mp-body">
+      <div class="mp-row"><span class="sub">Ícono</span><div class="mp-icons">${ics}</div></div>
+      <div class="mp-row"><span class="sub">Color</span><div class="mp-colors">${cols}</div></div>
+      <label class="check esp"><input type="checkbox" data-act="metaRed" data-id="${g.id}"${g.redondeo?" checked":""}><span>Redondear mis gastos y ahorrar el cambio aquí <small class="sub">(al siguiente múltiplo de $ 1.000; solo una meta a la vez)</small></span></label>
+    </div></details></section>`;}).join("")}</div>`:`<div class="empty">Crea tu primera meta. Un buen inicio es un fondo de emergencia de 3 a 6 meses de gastos.</div>`}`;
+}
+let metaOpen=new Set();
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("mp")){if(d.open)metaOpen.add(d.dataset.id);else metaOpen.delete(d.dataset.id);}},true);
+/* cuándo llegas a la meta: según el promedio de tus aportes de los últimos 3 meses (desde tu primer aporte) */
+function metaEta(g){
+  const falta=Math.max(0,g.objetivo-g.ahorrado);if(falta<=0)return {done:true};
+  const cm=mk(today),ap={};
+  for(const k in months)for(const x of (months[k].movs||[]))if(x.tipo==="ahorro"&&x.metaId===g.id)ap[k]=(ap[k]||0)+x.monto;
+  const ks=Object.keys(ap).sort();if(!ks.length)return {none:true};
+  const ventana=[0,1,2].map(i=>shift(cm,-i)).filter(k=>k>=ks[0]);
+  const avg=sum(ventana.map(k=>ap[k]||0))/Math.max(1,ventana.length);
+  if(!(avg>0))return {none:true};
+  return {avg,eta:shift(cm,Math.max(1,Math.ceil(falta/avg)))};
+}
+/* redondeo: al registrar un gasto, el cambio hasta el siguiente múltiplo se aparta en la meta que lo tenga activado */
+function aplicarRedondeo(v,desc,fecha){
+  const g=cfg.metas.find(x=>x.redondeo>0);
+  if(!g||(g.objetivo>0&&g.ahorrado>=g.objetivo))return null;
+  const diff=Math.round(Math.ceil(v/g.redondeo)*g.redondeo-v);
+  if(!(diff>=1)||diff>=g.redondeo)return null;
+  g.ahorrado+=diff;saveCfg();
+  addMov(fecha.slice(0,7),{id:uidv(),tipo:"ahorro",monto:diff,cat:"Ahorro",desc:"Redondeo: "+(desc||"gasto"),fecha,metaId:g.id,red:true});
+  return {diff,nombre:g.nombre};
 }
 
 function vDeudas(){
@@ -505,6 +553,14 @@ function racHTML(){
     ${r.hoy?"":`<button type="button" class="btn ghost sm" data-act="diaLibre">Hoy no gasté nada</button>`}
     <div class="rac-bdgs">${LOGROS.map(l=>`<button type="button" class="bdg${on.includes(l[0])?" on":""}" data-act="bdg" data-id="${l[0]}" aria-label="${esc(l[1])}${on.includes(l[0])?"":" (bloqueado)"}"><span class="bi">${svg(l[3])}</span><span class="bn">${esc(l[1])}</span></button>`).join("")}</div>
     <span class="note">${on.length} de ${LOGROS.length} logros</span></div>`;
+}
+
+/* ventana propia de rachas y logros */
+function vLogros(){
+  const c=logroCtx(),on=LOGROS.filter(l=>l[4](c)).map(l=>l[0]);
+  return `${racHTML()}
+  <section class="panel"><div class="split"><div><h2>Todos los logros</h2><p class="sub">Se ganan solos mientras usas la app.</p></div><span class="chip ${on.length===LOGROS.length?"good":""}">${on.length} de ${LOGROS.length}</span></div>
+    <ul class="list">${LOGROS.map(l=>{const got=on.includes(l[0]);return `<li><div class="li-main"><b>${esc(l[1])}</b><small>${esc(l[2])}</small></div><span class="chip ${got?"good":""}">${got?"Logrado":"Pendiente"}</span></li>`;}).join("")}</ul></section>`;
 }
 
 /* ---------- Resumen: modo edición (mantener presionado y arrastrar los bloques) ---------- */
@@ -661,6 +717,15 @@ document.addEventListener("click",e=>{
     case "more":openMore(b);break;
     case "diaLibre":{const h=ymd(new Date());cfg.logros={...cfg.logros,libres:[...cfg.logros.libres.filter(x=>x!==h),h].slice(-120)};saveCfg();render();toast("Día registrado. Tu racha sigue.");break;}
     case "bdg":{const l=LOGROS.find(x=>x[0]===id);if(l){const got=cfg.logros.vistos.includes(l[0]);toast(l[1]+": "+l[2]+(got?"":" (aún no lo logras)"));}break;}
+    case "metaIcon":case "metaColor":{
+      const [gid,val]=String(id||"").split(":"),g=cfg.metas.find(x=>x.id===gid);if(!g)break;
+      if(b.dataset.act==="metaIcon"){if(GOAL_ICONS.includes(val))g.icono=val;}
+      else{const i=+val;g.color=i>0&&GOAL_COLORS[i-1]?GOAL_COLORS[i-1]:"";}
+      saveCfg();render();break;}
+    case "metaRed":{
+      const g=cfg.metas.find(x=>x.id===id);if(!g)break;
+      const on=!(g.redondeo>0);cfg.metas.forEach(x=>{x.redondeo=0;});if(on)g.redondeo=1000;
+      saveCfg();render();toast(on?"Redondeo activado en "+g.nombre:"Redondeo desactivado");break;}
     case "editDone":exitEdit();break;
     case "editReset":cfg.widgets={orden:[]};saveCfg();cleanupEdit();render();enterEdit();toast("Orden original restablecido");break;
     case "rail":{const de=document.documentElement;de.classList.add("railanim");setTimeout(()=>de.classList.remove("railanim"),300);const on=de.classList.toggle("rail");try{localStorage.setItem("fin.rail",on?"1":"0")}catch(_){ }renderTabs();const nb=document.querySelector(".collapse-btn");if(nb)nb.focus({preventScroll:true});break;}
@@ -716,7 +781,8 @@ document.addEventListener("submit",e=>{
       rememberCat(p.comercio,cat);
       const mv={id:uidv(),tipo:"gasto",monto:v,cat,desc:p.comercio||"Pago con Apple Pay",fecha};if(fd.esp==="1")mv.esp=true;
       addMov(fecha.slice(0,7),mv);
-      dropPend(id);toast("Gasto registrado");return;}
+      const rd=aplicarRedondeo(v,mv.desc,fecha);
+      dropPend(id);toast("Gasto registrado"+(rd?` · ${money(rd.diff)} al ahorro de ${rd.nombre}`:""));return;}
     case "cat":{addCat(fd.nombre,fd.tipo);f.reset();return;}
     case "pass":changePassword(f,fd);return;
     case "perfil":{const p=cfg.perfil,lim={nombre:60,apodo:30,telefono:20,nacimiento:10,ciudad:60};
@@ -729,9 +795,11 @@ document.addEventListener("submit",e=>{
     case "salarioMes":{const v=num(fd.salario);if(v<0)return toast("Escribe un salario válido.");const m=month(cur);months[cur]={...months[cur],movs:m.movs,pagados:m.pagados,salarioMes:v};saveMonth(cur);toast("Salario de "+mName(cur)+" guardado");break;}
     case "mov":{const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");const fecha=fd.fecha||cur+"-01";const k=fecha.slice(0,7);
       const mv={id:uidv(),tipo:movTipo,monto:v,cat:fd.cat,desc:(fd.desc||"").trim(),fecha};if(movTipo==="gasto"&&fd.esp==="1")mv.esp=true;
-      addMov(k,mv);if(k!==cur)cur=k;toast(movTipo==="gasto"?"Gasto registrado":"Ingreso registrado");break;}
+      addMov(k,mv);if(k!==cur)cur=k;
+      const rd=movTipo==="gasto"?aplicarRedondeo(v,mv.desc,fecha):null;
+      toast((movTipo==="gasto"?"Gasto registrado":"Ingreso registrado")+(rd?` · ${money(rd.diff)} al ahorro de ${rd.nombre}`:""));break;}
     case "fijo":{const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");cfg.fijos=[...cfg.fijos,{id:uidv(),nombre:fd.nombre.trim(),monto:v,cat:fd.cat,dia:parseInt(fd.dia)||null}];saveCfg();toast("Pago fijo agregado");break;}
-    case "meta":{const v=num(fd.objetivo);if(v<=0)return toast("Escribe un objetivo mayor a cero.");cfg.metas=[...cfg.metas,{id:uidv(),nombre:fd.nombre.trim(),objetivo:v,ahorrado:0,fecha:fd.fecha||""}];saveCfg();toast("Meta creada");break;}
+    case "meta":{const v=num(fd.objetivo);if(v<=0)return toast("Escribe un objetivo mayor a cero.");cfg.metas=[...cfg.metas,{id:uidv(),nombre:fd.nombre.trim(),objetivo:v,ahorrado:0,fecha:fd.fecha||"",icono:"metas",color:"",redondeo:0}];saveCfg();toast("Meta creada");break;}
     case "aporte":{const v=num(fd.monto);if(v<=0)return toast("Escribe un aporte mayor a cero.");const g=cfg.metas.find(g=>g.id===id);if(!g)return;g.ahorrado+=v;saveCfg();
       addMov(cur,{id:uidv(),tipo:"ahorro",monto:v,cat:"Ahorro",desc:"Aporte: "+g.nombre,fecha:cur===mk(today)?ymd(new Date()):cur+"-01",metaId:g.id});toast("Aporte registrado");break;}
     case "deuda":{const v=num(fd.saldo);if(v<=0)return toast("Escribe un saldo mayor a cero.");cfg.deudas=[...cfg.deudas,{id:uidv(),nombre:fd.nombre.trim(),saldo:v,inicial:v,cuota:num(fd.cuota),tasa:(fd.tasa||"").trim()}];saveCfg();toast("Deuda agregada");break;}
@@ -803,8 +871,27 @@ function setSession(session){
   }else{
     uid=null;ready=false;cfg=defCfg();months={};pend=[];autoToken="";userMail="";resetLayers();
     $("authPass").value="";setAuthMode("login");showAuth();
+    if(notice){authMsg(notice,true);notice="";}
   }
 }
+
+/* ---------- seguridad: la sesión se cierra al cerrar la ventana y tras 10 minutos sin actividad ---------- */
+const IDLE_MS=10*60*1000,WARN_MS=9*60*1000;
+let lastActive=Date.now(),warned=false,notice="";
+try{const t=+sessionStorage.getItem("fin.last");if(t>0)lastActive=t;}catch(e){}
+function touchActive(){
+  const n=Date.now();if(n-lastActive<1000)return;
+  lastActive=n;warned=false;try{sessionStorage.setItem("fin.last",String(n));}catch(e){}
+}
+["pointerdown","keydown","touchstart","wheel","scroll"].forEach(ev=>window.addEventListener(ev,touchActive,{passive:true,capture:true}));
+function idleExpired(){return Date.now()-lastActive>IDLE_MS;}
+function idleCheck(){
+  if(!uid||!sb)return;
+  const idle=Date.now()-lastActive;
+  if(idle>IDLE_MS){notice="Por seguridad cerramos tu sesión tras 10 minutos sin actividad. Inicia sesión de nuevo.";sb.auth.signOut();return;}
+  if(idle>WARN_MS&&!warned){warned=true;toast("Tu sesión se cerrará pronto por inactividad.");}
+}
+setInterval(idleCheck,15000);
 
 /* ---------- perfil: saludo, avatar y hoja ---------- */
 let userMail="",topKey="";
@@ -1223,7 +1310,8 @@ function copyText(id){
 function openMore(opener){
   const m=month(cur),pend=cfg.fijos.filter(f=>!m.pagados[f.id]).length,saldo=sum(cfg.deudas.map(d=>d.saldo));
   const rows=[["fijos","Pagos fijos",cfg.fijos.length?(pend?pend+(pend===1?" pendiente":" pendientes")+" este mes":"Todos pagados"):"Sin pagos fijos"],
-    ["deudas","Deudas",cfg.deudas.length?"Saldo total "+money(saldo):"Sin deudas"],["historial","Historial","Últimos 6 meses y exportar"]];
+    ["deudas","Deudas",cfg.deudas.length?"Saldo total "+money(saldo):"Sin deudas"],["historial","Historial","Últimos 6 meses y exportar"],
+    ["logros","Rachas y logros",rachaInfo().streak+(rachaInfo().streak===1?" día":" días")+" de racha"]];
   $("moreList").innerHTML=rows.map(([id,n,s])=>`<button type="button" class="morerow" data-act="tab" data-id="${id}">${svg(id)}<span class="nm">${n}<small>${esc(s)}</small></span><span class="chev" aria-hidden="true">&rsaquo;</span></button>`).join("");
   openLayer($("moreSheet"),opener);
 }
@@ -1235,10 +1323,16 @@ renderTabs();
   if(!window.supabase||!conf.supabaseUrl||/TU-PROYECTO/.test(conf.supabaseUrl)){
     showAuth();authMsg("Falta configurar la conexión a Supabase en el archivo config.js.");$("authForm").hidden=true;$("authSwitch").hidden=true;$("authForgot").hidden=true;return;
   }
-  sb=window.supabase.createClient(conf.supabaseUrl,conf.supabaseAnonKey);
+  /* la sesión vive en sessionStorage: desaparece al cerrar la ventana o la app. Si no estuviera disponible, queda solo en memoria. */
+  const authStore=(()=>{
+    try{const s=window.sessionStorage;s.setItem("fin.t","1");s.removeItem("fin.t");return s;}
+    catch(e){const m={};return {getItem:k=>(k in m?m[k]:null),setItem:(k,v)=>{m[k]=String(v);},removeItem:k=>{delete m[k];}};}
+  })();
+  try{Object.keys(localStorage).filter(k=>/^sb-.*-(auth-token|code-verifier)/.test(k)).forEach(k=>localStorage.removeItem(k));}catch(e){}
+  sb=window.supabase.createClient(conf.supabaseUrl,conf.supabaseAnonKey,{auth:{storage:authStore,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   sb.auth.onAuthStateChange((event,session)=>{
     if(event==="PASSWORD_RECOVERY"){showAuth();setAuthMode("reset");return;}
-    setTimeout(()=>setSession(session),0);
+    setTimeout(()=>{setSession(session);if(session&&session.user)idleCheck();},0);
   });
   const {data}=await sb.auth.getSession();
   setSession(data.session);
@@ -1246,7 +1340,9 @@ renderTabs();
 
 /* sincronizar al volver a la app (otro dispositivo pudo cambiar datos) */
 document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="visible"&&uid&&ready&&pending===0)loadAll();
+  if(document.visibilityState!=="visible")return;
+  idleCheck();if(idleExpired())return;
+  if(uid&&ready&&pending===0)loadAll();
 });
 
 /* instalable como app */

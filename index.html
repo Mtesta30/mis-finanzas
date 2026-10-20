@@ -313,6 +313,29 @@ html.noscroll{overflow:hidden}
 label.check.esp{flex:1 1 100%;align-items:flex-start;font-size:.9rem}
 label.check.esp small{display:block}
 label.check.esp input{margin-top:2px}
+/* Metas vivas: anillo de progreso con ícono y color propios */
+.meta{--mc:var(--accent)}
+.meta-top{display:flex;align-items:center;gap:16px}
+.ringbox{position:relative;width:92px;height:92px;flex:none}
+.ring.big{width:92px;height:92px}
+.ring.big .r-fg.mfg{stroke:var(--mc);animation:ringDraw 800ms cubic-bezier(.23,1,.32,1)}
+@keyframes ringDraw{from{stroke-dasharray:0 264}}
+.meta-ic{position:absolute;inset:0;display:grid;place-items:center;color:var(--mc)}
+.meta-ic svg{width:30px;height:30px}
+.meta-info{display:grid;gap:2px;min-width:0;flex:1}
+.meta-info h2{margin:0}
+.meta-amt{font-size:1.5rem;font-weight:600;letter-spacing:-.03em}
+.meta-eta{color:var(--fg)}
+.mp summary{cursor:pointer;color:var(--accent-fg);font-weight:600;font-size:.9rem;padding:4px 0;list-style:none}
+.mp summary::-webkit-details-marker{display:none}
+.mp-body{display:grid;gap:12px;padding-top:8px}
+.mp-row{display:grid;gap:6px}
+.mp-icons,.mp-colors{display:flex;flex-wrap:wrap;gap:8px}
+.mic{display:grid;place-items:center;width:40px;height:40px;border:2px solid transparent;border-radius:12px;background:var(--sunk);color:var(--muted);cursor:pointer;padding:0}
+.mic svg{width:20px;height:20px}
+.mic.on{border-color:var(--mc);color:var(--mc);background:var(--surface)}
+.msw{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;box-shadow:inset 0 0 0 3px var(--surface),0 0 0 1px var(--line)}
+.msw.on{border-color:var(--fg)}
 /* Rachas y logros */
 .rac{gap:10px}
 .rac-head{display:flex;align-items:center;gap:14px}
@@ -489,6 +512,7 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   /* Con "reducir movimiento" las siluetas no se desplazan: solo respiran (cambian de tono muy despacio) */
   .fi{top:var(--y);transform:rotate(var(--r));will-change:auto;animation:breathe calc(var(--d) * .6) ease-in-out var(--t) infinite alternate}
   .modeseg button:active,.qbtn:active,.bdg:active{transform:none}
+  .ring.big .r-fg.mfg{animation:none}
   .achv{transform:translate(-50%,0);transition:opacity 200ms ease}
   /* sin temblor: los bloques se marcan con un borde punteado */
   .editing .blk{animation:none;outline:2px dashed var(--accent-fg);outline-offset:3px;border-radius:22px}
