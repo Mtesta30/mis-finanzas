@@ -386,12 +386,14 @@ function applyEditOrder(){
 function enterEdit(){
   if(editing||!blocksEl())return;
   editing=true;swallow=true;setTimeout(()=>{swallow=false;},450);
+  document.documentElement.classList.add("editmode");
   document.getElementById("app").classList.add("editing");document.getElementById("editBar").hidden=false;
   applyEditOrder();
 }
 function cleanupEdit(){
   editing=false;press=null;
   if(drag){cancelAnimationFrame(drag.raf);drag=null;}
+  document.documentElement.classList.remove("editmode");
   document.getElementById("app").classList.remove("editing");document.getElementById("editBar").hidden=true;
 }
 function exitEdit(){if(!editing)return;cleanupEdit();render();}
@@ -400,20 +402,31 @@ function saveOrder(){
   cfg.widgets={orden:[...b.children].sort((x,y)=>+x.style.order-+y.style.order).map(c=>c.dataset.blk)};
   saveCfg();
 }
+/* Para que se sienta fluido: el movimiento del dedo solo guarda la posición y UNA vez por fotograma
+   se mueve el bloque y se revisa si hay que cambiar de lugar, usando posiciones medidas de antemano. */
 function applyDrag(){
   const d=drag;
-  d.el.style.transform=`translate(${d.px-d.sx+d.ox}px,${d.py-d.sy+d.oy+(window.scrollY-d.sy0)}px) scale(1.03)`;
+  d.el.style.transform=`translate3d(${d.px-d.sx+d.ox}px,${d.py-d.sy+d.oy+(window.scrollY-d.sy0)}px,0) scale(1.03)`;
+}
+function measureDrag(){
+  const d=drag,b=blocksEl();if(!d||!b)return;
+  d.rects=new Map();
+  for(const c of b.children){
+    if(c===d.el)continue;
+    const r=c.getBoundingClientRect();
+    d.rects.set(c,{l:r.left,t:r.top+window.scrollY,w:r.width,h:r.height});
+  }
 }
 function checkSwap(){
-  const d=drag,b=blocksEl();if(!d||!b)return;
-  const kids=[...b.children],x=d.px,y=d.py;
-  const target=kids.find(c=>{
-    if(c===d.el)return false;
-    const r=c.getBoundingClientRect(),mx=r.width*.25,my=r.height*.25;
-    return x>r.left+mx&&x<r.right-mx&&y>r.top+my&&y<r.bottom-my;
-  });
+  const d=drag,b=blocksEl();if(!d||!b||!d.rects)return;
+  const x=d.px,y=d.py+window.scrollY;
+  let target=null;
+  for(const [c,r] of d.rects){
+    const mx=r.w*.25,my=r.h*.25;
+    if(x>r.l+mx&&x<r.l+r.w-mx&&y>r.t+my&&y<r.t+r.h-my){target=c;break;}
+  }
   if(!target)return;
-  const order=kids.sort((p,q)=>+p.style.order-+q.style.order),from=order.indexOf(d.el),to=order.indexOf(target);
+  const order=[...b.children].sort((p,q)=>+p.style.order-+q.style.order),from=order.indexOf(d.el),to=order.indexOf(target);
   if(from===to||from<0||to<0)return;
   const before=new Map(order.map(c=>[c,c.getBoundingClientRect()]));
   order.splice(from,1);order.splice(to,0,d.el);
@@ -423,20 +436,22 @@ function checkSwap(){
   order.forEach(c=>{
     if(c===d.el)return;
     const a=before.get(c),n=c.getBoundingClientRect(),dx=a.left-n.left,dy=a.top-n.top;
-    if(dx||dy)c.animate([{transform:`translate(${dx}px,${dy}px) scale(.985)`},{transform:"translate(0,0) scale(.985)"}],{duration:220,easing:"cubic-bezier(0.23, 1, 0.32, 1)"});
+    if(dx||dy)c.animate([{transform:`translate3d(${dx}px,${dy}px,0) scale(.985)`},{transform:"translate3d(0,0,0) scale(.985)"}],{duration:220,easing:"cubic-bezier(0.23, 1, 0.32, 1)"});
   });
+  measureDrag();
 }
 function dragTick(){
   const d=drag;if(!d)return;
   const y=d.py,edge=110;let dy=0;
   if(y<edge)dy=-Math.min(20,(edge-y)/4+4);else if(y>window.innerHeight-edge-60)dy=Math.min(20,(y-(window.innerHeight-edge-60))/4+4);
-  if(dy){window.scrollBy(0,dy);applyDrag();checkSwap();}
+  if(dy)window.scrollBy(0,dy);
+  if(d.dirty||dy){d.dirty=false;applyDrag();checkSwap();}
   d.raf=requestAnimationFrame(dragTick);
 }
 function beginDrag(blk,e){
   if(drag)return;
-  drag={el:blk,id:e.pointerId,sx:e.clientX,sy:e.clientY,px:e.clientX,py:e.clientY,ox:0,oy:0,sy0:window.scrollY};
-  blk.classList.add("dragging");applyDrag();drag.raf=requestAnimationFrame(dragTick);
+  drag={el:blk,id:e.pointerId,sx:e.clientX,sy:e.clientY,px:e.clientX,py:e.clientY,ox:0,oy:0,sy0:window.scrollY,dirty:true};
+  blk.classList.add("dragging");measureDrag();drag.raf=requestAnimationFrame(dragTick);
 }
 function endDrag(){
   const d=drag;if(!d)return;
@@ -459,7 +474,7 @@ document.addEventListener("pointermove",e=>{
     if(Math.hypot(e.clientX-press.x,e.clientY-press.y)>10){clearTimeout(press.t);press=null;}
     else{press.x=e.clientX;press.y=e.clientY;}
   }
-  if(drag&&e.pointerId===drag.id){drag.px=e.clientX;drag.py=e.clientY;applyDrag();checkSwap();}
+  if(drag&&e.pointerId===drag.id){drag.px=e.clientX;drag.py=e.clientY;drag.dirty=true;}
 });
 const endPress=e=>{
   if(press){clearTimeout(press.t);press=null;}

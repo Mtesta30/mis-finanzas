@@ -320,9 +320,12 @@ html.noscroll{overflow:hidden}
   .blk-h{grid-column:span 2}
 }
 @keyframes wiggle{from{transform:rotate(-.55deg) scale(.985)}to{transform:rotate(.55deg) scale(.985)}}
-.editing .blk{animation:wiggle .15s ease-in-out var(--wd,0s) infinite alternate;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
+.editing .blk{animation:wiggle .15s ease-in-out var(--wd,0s) infinite alternate;will-change:transform;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
 .editing .blk>*{pointer-events:none}
-.editing .blk.dragging{animation:none;z-index:7;cursor:grabbing;filter:drop-shadow(0 16px 26px rgba(10,12,20,.3))}
+/* la sombra va en el propio bloque (no con filtro) y sin difuminado de fondo en las barras: así se mueve sin tirones */
+.editing .blk.dragging{animation:none;z-index:7;cursor:grabbing}
+.editing .blk.dragging>*{box-shadow:0 24px 40px -14px rgba(10,12,20,.4)}
+html.editmode header.top,html.editmode body::before,html.editmode .tabbar,html.editmode .editbar{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface)}
 .editbar{position:fixed;left:50%;bottom:calc(82px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:10px;width:min(560px,calc(100% - 24px));padding:10px 10px 10px 16px;border-radius:18px;background:var(--surface);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);box-shadow:0 12px 36px rgba(10,12,20,.22)}
 @supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){.editbar{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}}
 .editbar span{flex:1;min-width:0;font-size:.84rem;color:var(--muted);line-height:1.3}
