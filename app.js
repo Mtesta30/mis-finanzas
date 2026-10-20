@@ -24,7 +24,7 @@ const today=new Date();
 let cur=mk(today), tab="resumen", movTipo="gasto", pendingRender=false;
 try{const t=localStorage.getItem("fin.tab"); if(t&&TABS.some(x=>x[0]===t)) tab=t; if(localStorage.getItem("fin.mov")==="ingreso") movTipo="ingreso";}catch(e){}
 
-function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[],perfil:{nombre:"",apodo:"",telefono:"",nacimiento:"",ciudad:"",foto:"",omitido:false},apariencia:{tema:"auto",paleta:"azul",acento:""},categorias:{gasto:[],ingreso:[],ocultas:[]}};}
+function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[],perfil:{nombre:"",apodo:"",telefono:"",nacimiento:"",ciudad:"",foto:"",omitido:false},apariencia:{tema:"auto",paleta:"azul",acento:""},categorias:{gasto:[],ingreso:[],ocultas:[]},widgets:{orden:[]}};}
 function mk(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
 function shift(k,n){const [y,m]=k.split("-").map(Number);return mk(new Date(y,m-1+n,1));}
 function mName(k,short){const [y,m]=k.split("-").map(Number);return new Date(y,m-1,1).toLocaleDateString("es-CO",short?{month:"short"}:{month:"long",year:"numeric"});}
@@ -114,6 +114,7 @@ function cleanCfg(c){
   const categorias=cleanCategorias(c.categorias);
   const pres={};Object.entries(c.presupuestos&&typeof c.presupuestos==="object"?c.presupuestos:{}).forEach(([k,v])=>{if(CATS.includes(k)||categorias.gasto.includes(k))pres[k]=n0(v);});
   return {salario:n0(c.salario),presupuestos:pres,perfil:cleanPerfil(c.perfil),apariencia:cleanApariencia(c.apariencia),categorias,
+    widgets:{orden:arr(c.widgets&&c.widgets.orden).map(v=>String(v??"")).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i)},
     fijos:arr(c.fijos).map(f=>({id:safeId(f.id),nombre:str(f.nombre),monto:n0(f.monto),cat:str(f.cat,40),dia:Math.min(31,Math.max(0,parseInt(f.dia)||0))||null})),
     metas:arr(c.metas).map(g=>({id:safeId(g.id),nombre:str(g.nombre),objetivo:n0(g.objetivo),ahorrado:n0(g.ahorrado),fecha:/^\d{4}-\d{2}$/.test(g.fecha)?g.fecha:""})),
     deudas:arr(c.deudas).map(d=>({id:safeId(d.id),nombre:str(d.nombre),saldo:n0(d.saldo),inicial:n0(d.inicial),cuota:n0(d.cuota),tasa:str(d.tasa,10)}))};
@@ -138,6 +139,8 @@ function renderTabs(){
   document.querySelector('[data-act="today"]').classList.toggle("show",cur!==mk(today));
 }
 function render(){
+  if(drag)return;
+  if(editing&&tab!=="resumen")cleanupEdit();
   updateTop();
   const a=document.activeElement;
   if(a&&document.getElementById("app").contains(a)&&/INPUT|SELECT/.test(a.tagName)&&a.type!=="checkbox"){pendingRender=true;return;}
@@ -146,6 +149,7 @@ function render(){
   if(offline){app.innerHTML=`<div class="notice">No se pudieron cargar tus datos. Revisa tu conexión a internet y vuelve a abrir la app.</div>`;return;}
   if(!ready){app.innerHTML=`<div class="empty">Cargando tus datos...</div>`;return;}
   app.innerHTML=({resumen:vResumen,movimientos:vMov,fijos:vFijos,presupuestos:vPres,metas:vMetas,deudas:vDeudas,historial:vHist})[tab]();
+  if(editing)applyEditOrder();
 }
 
 /* cifra grande con el símbolo $ más chico y apagado (solo para los widgets) */
@@ -153,15 +157,16 @@ const moneyFmt=new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",ma
 function moneyBig(n){
   return moneyFmt.formatToParts(Math.round(n||0)).map(p=>p.type==="currency"?`<span class="cur">${esc(p.value)}</span>`:p.type==="literal"?"":esc(p.value)).join("");
 }
-function kpis(k){
+/* los cuatro widgets del Resumen, cada uno por separado para poder reordenarlos */
+function kpiCards(k){
   const t=totals(k);
   const pct=t.ingresos?Math.round((t.ahorro/t.ingresos)*100):0;
-  return `<section class="kpis">
-    <div class="kpi"><span class="lbl">Ingresos del mes</span><span class="val">${moneyBig(t.ingresos)}</span><span class="note">Salario ${money(t.salario)} + otros ${money(t.extra)}</span></div>
-    <div class="kpi"><span class="lbl">Egresos</span><span class="val">${moneyBig(t.egresos)}</span><span class="note">Fijos ${money(t.fijos)} · variables ${money(t.gastos)}</span></div>
-    <div class="kpi"><span class="lbl">Ahorrado</span><span class="val">${moneyBig(t.ahorro)}</span><span class="note">${pct}% de tus ingresos</span></div>
-    <div class="kpi ${t.disp<0?"neg":"hero"}"><span class="lbl">Disponible</span><span class="val">${moneyBig(t.disp)}</span><span class="note">${t.disp<0?"Gastas más de lo que ganas este mes":"Lo que te queda para el resto del mes"}</span></div>
-  </section>`;
+  return {
+    ing:`<div class="kpi"><span class="lbl">Ingresos del mes</span><span class="val">${moneyBig(t.ingresos)}</span><span class="note">Salario ${money(t.salario)} + otros ${money(t.extra)}</span></div>`,
+    egr:`<div class="kpi"><span class="lbl">Egresos</span><span class="val">${moneyBig(t.egresos)}</span><span class="note">Fijos ${money(t.fijos)} · variables ${money(t.gastos)}</span></div>`,
+    aho:`<div class="kpi"><span class="lbl">Ahorrado</span><span class="val">${moneyBig(t.ahorro)}</span><span class="note">${pct}% de tus ingresos</span></div>`,
+    disp:`<div class="kpi ${t.disp<0?"neg":"hero"}"><span class="lbl">Disponible</span><span class="val">${moneyBig(t.disp)}</span><span class="note">${t.disp<0?"Gastas más de lo que ganas este mes":"Lo que te queda para el resto del mes"}</span></div>`
+  };
 }
 
 /* listas de categorías para los formularios: las de base + las propias, sin las ocultas */
@@ -240,30 +245,38 @@ function remindersHTML(){
     ${due.length>show.length?`<p class="sub">y ${due.length-show.length} más en la pestaña Pagos fijos.</p>`:""}</section>`;
 }
 
+/* bloques del Resumen que se pueden reordenar: tamaño (f completo, m completo en celular, s mitad, h mitad en computadora) y orden de fábrica */
+const BLOCK_SIZE={pend:"f",remind:"f",disp:"m",ing:"s",egr:"s",aho:"m",reg:"f",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
+const BLOCK_DEFAULT=["pend","remind","disp","ing","egr","aho","reg","fijos","gastos","salmes","salbase"];
+function blockOrder(){
+  const saved=arr(cfg.widgets&&cfg.widgets.orden).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i);
+  return [...saved,...BLOCK_DEFAULT.filter(id=>!saved.includes(id))];
+}
 function vResumen(){
-  const t=totals(cur), m=month(cur), sp=spentByCat(cur);
-  const pend=cfg.fijos.filter(f=>!m.pagados[f.id]);
+  const t=totals(cur), m=month(cur), sp=spentByCat(cur), k=kpiCards(cur);
+  const pendF=cfg.fijos.filter(f=>!m.pagados[f.id]);
   const noSal=!(+cfg.salario);
   const cats=Object.entries(sp).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
   const max=Math.max(1,...cats.map(c=>c[1]));
-  return `${noSal?`<section class="panel"><div><h2>Empieza por tu salario</h2><p class="sub">Escribe cuánto recibes al mes. Después agrega tus pagos fijos (arriendo, celular, internet, transporte).</p></div>${salForm()}</section>`:""}
-  ${pendHTML()}
-  ${remindersHTML()}
-  ${kpis(cur)}
-  <section class="panel"><div><h2>Registrar</h2><p class="sub">Anota un movimiento de ${mName(cur)}.</p></div>
-    <div class="quickrow"><button type="button" class="qbtn q-gasto" data-act="goMov" data-id="gasto">Registrar gasto</button><button type="button" class="qbtn q-ingreso" data-act="goMov" data-id="ingreso">Registrar ingreso</button></div></section>
-  <div class="grid2">
-    <section class="panel"><div class="split"><h2>Pagos fijos</h2><span class="chip ${pend.length?"warn":"good"}">${cfg.fijos.length?(pend.length?pend.length+" pendientes":"Todos pagados"):"Sin pagos fijos"}</span></div>
+  const B={
+    pend:pendHTML,
+    remind:remindersHTML,
+    disp:()=>k.disp, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho,
+    reg:()=>`<section class="panel"><div><h2>Registrar</h2><p class="sub">Anota un movimiento de ${mName(cur)}.</p></div>
+      <div class="quickrow"><button type="button" class="qbtn q-gasto" data-act="goMov" data-id="gasto">Registrar gasto</button><button type="button" class="qbtn q-ingreso" data-act="goMov" data-id="ingreso">Registrar ingreso</button></div></section>`,
+    fijos:()=>`<section class="panel"><div class="split"><h2>Pagos fijos</h2><span class="chip ${pendF.length?"warn":"good"}">${cfg.fijos.length?(pendF.length?pendF.length+" pendientes":"Todos pagados"):"Sin pagos fijos"}</span></div>
       ${cfg.fijos.length?`<ul class="list">${cfg.fijos.slice().sort((a,b)=>(a.dia||99)-(b.dia||99)).map(f=>fijoCheck(f,m)).join("")}</ul>`:`<div class="empty">Agrega tus pagos mensuales en la pestaña Pagos fijos.</div>`}
-    </section>
-    <section class="panel"><div><h2>En qué se va tu dinero</h2><p class="sub">Fijos, gastos variables y ahorro por categoría.</p></div>
+    </section>`,
+    gastos:()=>`<section class="panel"><div><h2>En qué se va tu dinero</h2><p class="sub">Fijos, gastos variables y ahorro por categoría.</p></div>
       ${cats.length?cats.map(([c,v])=>{const lim=+cfg.presupuestos[c]||0;const st=lim?(v>lim?"bad":v>lim*.85?"warn":"good"):"";
         return `<div class="budget"><div class="hd"><span>${esc(c)}</span><span class="num">${money(v)}${lim?` <small class="sub">/ ${money(lim)}</small>`:""}</span></div><div class="bar ${st}"><i style="width:${Math.min(100,(lim?v/lim:v/max)*100)}%"></i></div></div>`;}).join(""):`<div class="empty">Aún no hay gastos este mes.</div>`}
-    </section>
-  </div>
-  ${noSal?"":`<div class="grid2"><section class="panel"><div class="split"><div><h2>Salario de ${mName(cur)}</h2><p class="sub">${m.salarioMes!=null?"Este mes tiene un salario distinto al base.":"Este mes usa tu salario base. Cámbialo si ese mes recibiste otro valor."}</p></div>${m.salarioMes!=null?`<span class="chip warn">Ajustado</span>`:""}</div>
-    <form class="row" data-form="salarioMes"><label class="f">Salario recibido (COP)<input id="salmes" name="salario" inputmode="numeric" value="${t.salario||""}" required></label><button class="btn">Guardar</button>${m.salarioMes!=null?`<button type="button" class="btn ghost" data-act="resetSalMes">Usar salario base</button>`:""}</form></section>
-  <section class="panel"><div><h2>Salario base</h2><p class="sub">Se aplica a todos los meses que no tengan un salario ajustado.</p></div>${salForm()}</section></div>`}`;
+    </section>`,
+    salmes:()=>noSal?"":`<section class="panel"><div class="split"><div><h2>Salario de ${mName(cur)}</h2><p class="sub">${m.salarioMes!=null?"Este mes tiene un salario distinto al base.":"Este mes usa tu salario base. Cámbialo si ese mes recibiste otro valor."}</p></div>${m.salarioMes!=null?`<span class="chip warn">Ajustado</span>`:""}</div>
+      <form class="row" data-form="salarioMes"><label class="f">Salario recibido (COP)<input id="salmes" name="salario" inputmode="numeric" value="${t.salario||""}" required></label><button class="btn">Guardar</button>${m.salarioMes!=null?`<button type="button" class="btn ghost" data-act="resetSalMes">Usar salario base</button>`:""}</form></section>`,
+    salbase:()=>noSal?"":`<section class="panel"><div><h2>Salario base</h2><p class="sub">Se aplica a todos los meses que no tengan un salario ajustado.</p></div>${salForm()}</section>`
+  };
+  const top=noSal?`<section class="panel"><div><h2>Empieza por tu salario</h2><p class="sub">Escribe cuánto recibes al mes. Después agrega tus pagos fijos (arriendo, celular, internet, transporte).</p></div>${salForm()}</section>`:"";
+  return top+`<div class="blocks" id="blocks">${blockOrder().map(id=>{const h=B[id]();return h?`<div class="blk blk-${BLOCK_SIZE[id]}" data-blk="${id}">${h}</div>`:"";}).join("")}</div>`;
 }
 function salForm(){return `<form class="row" data-form="salario"><label class="f">Salario neto mensual (COP)<input id="sal" name="salario" inputmode="numeric" value="${+cfg.salario||""}" placeholder="2500000" required></label><button class="btn">Guardar salario</button></form>`;}
 function fijoCheck(f,m){const p=!!m.pagados[f.id];return `<li><label class="check li-main"><input type="checkbox" data-act="pagar" data-id="${f.id}" ${p?"checked":""}><span><b>${esc(f.nombre)}</b><small>${esc(f.cat)}${f.dia?" · día "+f.dia:""}</small></span></label><span class="num">${money(f.monto)}</span><span class="chip ${p?"good":"warn"}">${p?"Pagado":"Pendiente"}</span></li>`;}
@@ -362,6 +375,106 @@ function vHist(){
   <p class="sub">Los meses sin registros aparecen con guion.</p></section>`;
 }
 
+/* ---------- Resumen: modo edición (mantener presionado y arrastrar los bloques) ---------- */
+const HOLD_MS=500;
+let editing=false,press=null,drag=null,swallow=false;
+const blocksEl=()=>document.getElementById("blocks");
+function applyEditOrder(){
+  const b=blocksEl();if(!b)return;
+  [...b.children].forEach((c,i)=>{c.style.order=i;c.style.setProperty("--wd",(-((i*37)%150)/1000)+"s");});
+}
+function enterEdit(){
+  if(editing||!blocksEl())return;
+  editing=true;swallow=true;setTimeout(()=>{swallow=false;},450);
+  document.getElementById("app").classList.add("editing");document.getElementById("editBar").hidden=false;
+  applyEditOrder();
+}
+function cleanupEdit(){
+  editing=false;press=null;
+  if(drag){cancelAnimationFrame(drag.raf);drag=null;}
+  document.getElementById("app").classList.remove("editing");document.getElementById("editBar").hidden=true;
+}
+function exitEdit(){if(!editing)return;cleanupEdit();render();}
+function saveOrder(){
+  const b=blocksEl();if(!b)return;
+  cfg.widgets={orden:[...b.children].sort((x,y)=>+x.style.order-+y.style.order).map(c=>c.dataset.blk)};
+  saveCfg();
+}
+function applyDrag(){
+  const d=drag;
+  d.el.style.transform=`translate(${d.px-d.sx+d.ox}px,${d.py-d.sy+d.oy+(window.scrollY-d.sy0)}px) scale(1.03)`;
+}
+function checkSwap(){
+  const d=drag,b=blocksEl();if(!d||!b)return;
+  const kids=[...b.children],x=d.px,y=d.py;
+  const target=kids.find(c=>{
+    if(c===d.el)return false;
+    const r=c.getBoundingClientRect(),mx=r.width*.25,my=r.height*.25;
+    return x>r.left+mx&&x<r.right-mx&&y>r.top+my&&y<r.bottom-my;
+  });
+  if(!target)return;
+  const order=kids.sort((p,q)=>+p.style.order-+q.style.order),from=order.indexOf(d.el),to=order.indexOf(target);
+  if(from===to||from<0||to<0)return;
+  const before=new Map(order.map(c=>[c,c.getBoundingClientRect()]));
+  order.splice(from,1);order.splice(to,0,d.el);
+  order.forEach((c,i)=>{c.style.order=i;});
+  const r0=before.get(d.el),r1=d.el.getBoundingClientRect();
+  d.ox+=r0.left-r1.left;d.oy+=r0.top-r1.top;applyDrag();
+  order.forEach(c=>{
+    if(c===d.el)return;
+    const a=before.get(c),n=c.getBoundingClientRect(),dx=a.left-n.left,dy=a.top-n.top;
+    if(dx||dy)c.animate([{transform:`translate(${dx}px,${dy}px) scale(.985)`},{transform:"translate(0,0) scale(.985)"}],{duration:220,easing:"cubic-bezier(0.23, 1, 0.32, 1)"});
+  });
+}
+function dragTick(){
+  const d=drag;if(!d)return;
+  const y=d.py,edge=110;let dy=0;
+  if(y<edge)dy=-Math.min(20,(edge-y)/4+4);else if(y>window.innerHeight-edge-60)dy=Math.min(20,(y-(window.innerHeight-edge-60))/4+4);
+  if(dy){window.scrollBy(0,dy);applyDrag();checkSwap();}
+  d.raf=requestAnimationFrame(dragTick);
+}
+function beginDrag(blk,e){
+  if(drag)return;
+  drag={el:blk,id:e.pointerId,sx:e.clientX,sy:e.clientY,px:e.clientX,py:e.clientY,ox:0,oy:0,sy0:window.scrollY};
+  blk.classList.add("dragging");applyDrag();drag.raf=requestAnimationFrame(dragTick);
+}
+function endDrag(){
+  const d=drag;if(!d)return;
+  cancelAnimationFrame(d.raf);drag=null;
+  const from=d.el.style.transform;
+  d.el.style.transform="";d.el.classList.remove("dragging");
+  d.el.animate([{transform:from},{transform:"none"}],{duration:200,easing:"cubic-bezier(0.23, 1, 0.32, 1)"});
+  saveOrder();
+}
+document.addEventListener("pointerdown",e=>{
+  if(tab!=="resumen"||(e.pointerType==="mouse"&&e.button!==0))return;
+  const blk=e.target.closest&&e.target.closest("#blocks .blk");if(!blk)return;
+  if(editing){beginDrag(blk,e);return;}
+  if(e.target.closest("input,select,textarea"))return;
+  const p=press={blk,x:e.clientX,y:e.clientY,id:e.pointerId};
+  p.t=setTimeout(()=>{if(press!==p)return;press=null;enterEdit();beginDrag(blk,{clientX:p.x,clientY:p.y,pointerId:p.id});},HOLD_MS);
+});
+document.addEventListener("pointermove",e=>{
+  if(press){
+    if(Math.hypot(e.clientX-press.x,e.clientY-press.y)>10){clearTimeout(press.t);press=null;}
+    else{press.x=e.clientX;press.y=e.clientY;}
+  }
+  if(drag&&e.pointerId===drag.id){drag.px=e.clientX;drag.py=e.clientY;applyDrag();checkSwap();}
+});
+const endPress=e=>{
+  if(press){clearTimeout(press.t);press=null;}
+  if(drag&&e.pointerId===drag.id)endDrag();
+};
+document.addEventListener("pointerup",endPress);
+document.addEventListener("pointercancel",endPress);
+/* mientras se arrastra no debe desplazarse la página, y mantener presionado no debe seleccionar texto ni abrir menús */
+document.addEventListener("touchmove",e=>{if(drag&&e.cancelable)e.preventDefault();},{passive:false});
+document.addEventListener("contextmenu",e=>{if((press||editing)&&e.target.closest&&e.target.closest("#blocks"))e.preventDefault();});
+document.addEventListener("selectstart",e=>{if((press||editing)&&e.target.closest&&e.target.closest("#blocks"))e.preventDefault();});
+document.addEventListener("click",e=>{
+  if(swallow||(editing&&e.target.closest&&e.target.closest("#blocks"))){e.preventDefault();e.stopPropagation();}
+},true);
+
 /* al cambiar de sección, el contenido nuevo entra desvaneciendo y desplazándose apenas desde el lado hacia el que te mueves */
 function playTab(cls){const a=document.getElementById("app");a.classList.remove("go-r","go-l");void a.offsetWidth;a.classList.add(cls);}
 
@@ -390,10 +503,14 @@ document.addEventListener("click",e=>{
     case "tab":{
       if(!TABS.some(x=>x[0]===id))break;
       const from=TABS.findIndex(x=>x[0]===tab),to=TABS.findIndex(x=>x[0]===id),changed=id!==tab;
-      tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }closeLayer($("moreSheet"));render();window.scrollTo(0,0);
+      tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }closeLayer($("moreSheet"));
+      if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+      render();window.scrollTo(0,0);
       if(changed)playTab(to>from?"go-r":"go-l");
       break;}
     case "more":openMore(b);break;
+    case "editDone":exitEdit();break;
+    case "editReset":cfg.widgets={orden:[]};saveCfg();cleanupEdit();render();enterEdit();toast("Orden original restablecido");break;
     case "rail":{const de=document.documentElement;de.classList.add("railanim");setTimeout(()=>de.classList.remove("railanim"),300);const on=de.classList.toggle("rail");try{localStorage.setItem("fin.rail",on?"1":"0")}catch(_){ }renderTabs();const nb=document.querySelector(".collapse-btn");if(nb)nb.focus({preventScroll:true});break;}
     case "closeLayer":{const el=$(id||"x");if(el&&el.classList.contains("layer"))closeLayer(el);break;}
     case "openCats":renderCatList();openLayer($("catSheet"),b);break;
@@ -615,6 +732,7 @@ document.addEventListener("click",e=>{if(popOpen&&!e.target.closest(".month-pill
 
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape")return;
+  if(editing){exitEdit();return;}
   if(popOpen){closeMonthPop(true);return;}
   if(!$("cropBox").hidden){cancelCrop();return;}
   if(!$("passBox").hidden){closePass();return;}
