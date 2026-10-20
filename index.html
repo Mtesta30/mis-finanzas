@@ -313,6 +313,37 @@ html.noscroll{overflow:hidden}
 label.check.esp{flex:1 1 100%;align-items:flex-start;font-size:.9rem}
 label.check.esp small{display:block}
 label.check.esp input{margin-top:2px}
+/* Tu mes en cifras */
+.story{position:fixed;inset:0;z-index:50;display:grid;grid-template-rows:auto 1fr auto;background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,0) 60%),var(--accent);color:var(--accent-ink);padding:max(14px,env(safe-area-inset-top)) 22px max(20px,env(safe-area-inset-bottom));overflow:hidden}
+.story-bars{display:flex;gap:5px;padding-top:6px}
+.story-bars i{position:relative;flex:1;height:4px;border-radius:2px;background:color-mix(in srgb,var(--accent-ink) 28%,transparent);overflow:hidden}
+.story-bars i::after{content:"";position:absolute;inset:0;background:var(--accent-ink);transform:scaleX(0);transform-origin:left}
+.story-bars i.done::after{transform:scaleX(1)}
+.story-bars i.on::after{animation:storyBar 5s linear forwards}
+@keyframes storyBar{to{transform:scaleX(1)}}
+.story.paused .story-bars i.on::after{animation-play-state:paused}
+.story-x{position:absolute;top:calc(26px + env(safe-area-inset-top,0px));right:18px;z-index:3;border:0;background:color-mix(in srgb,var(--accent-ink) 18%,transparent);color:var(--accent-ink);border-radius:99px;padding:7px 14px;font:600 .85rem var(--f-body);cursor:pointer}
+.story-slide{display:grid;align-content:center;gap:12px;padding:0 4px;min-height:0}
+.story-slide>*{animation:sIn 480ms cubic-bezier(.23,1,.32,1) both}
+.story-slide>*:nth-child(2){animation-delay:70ms}
+.story-slide>*:nth-child(3){animation-delay:140ms}
+.story-slide>*:nth-child(4){animation-delay:210ms}
+@keyframes sIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.s-k{font-size:1.05rem;font-weight:600;opacity:.82;letter-spacing:.01em}
+.s-big{font-family:var(--f-num);font-size:clamp(2.6rem,13vw,4.4rem);font-weight:700;line-height:1.04;letter-spacing:-.045em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.s-big small{font-size:.5em;font-weight:600;letter-spacing:0}
+.s-big .cur{font-size:.55em;font-weight:500;opacity:.6;margin-right:.12em;vertical-align:.18em;letter-spacing:0}
+.s-sub{font-size:1.15rem;line-height:1.4;opacity:.92}
+.s-card{display:grid;gap:8px;padding:20px 22px;border-radius:24px;background:color-mix(in srgb,var(--accent-ink) 14%,transparent);font-size:1.05rem}
+.s-card b{font:700 1.7rem var(--f-display);letter-spacing:-.03em;margin-bottom:4px}
+.story-tap{position:absolute;top:70px;bottom:96px;width:50%;z-index:2;touch-action:manipulation}
+.story-tap[data-dir="l"]{left:0}
+.story-tap[data-dir="r"]{right:0}
+.story-foot{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
+.story .check{color:var(--accent-ink);font-weight:500}
+.story .check input{accent-color:var(--accent-ink)}
+.story .btn{background:var(--accent-ink);border-color:var(--accent-ink);color:var(--accent)}
+.mesbanner{gap:10px}
 /* Metas vivas: anillo de progreso con ícono y color propios */
 .meta{--mc:var(--accent)}
 .meta-top{display:flex;align-items:center;gap:16px}
@@ -513,6 +544,8 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   .fi{top:var(--y);transform:rotate(var(--r));will-change:auto;animation:breathe calc(var(--d) * .6) ease-in-out var(--t) infinite alternate}
   .modeseg button:active,.qbtn:active,.bdg:active{transform:none}
   .ring.big .r-fg.mfg{animation:none}
+  .story-slide>*{animation:none}
+  .story-bars i.on::after{animation:none;transform:scaleX(1)}
   .achv{transform:translate(-50%,0);transition:opacity 200ms ease}
   /* sin temblor: los bloques se marcan con un borde punteado */
   .editing .blk{animation:none;outline:2px dashed var(--accent-fg);outline-offset:3px;border-radius:22px}
@@ -602,6 +635,18 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   <span>Arrastra los bloques para ordenarlos</span>
   <button type="button" class="btn ghost sm" data-act="editReset">Restablecer</button>
   <button type="button" class="btn sm" data-act="editDone">Listo</button>
+</div>
+<!-- Tu mes en cifras: historias que se pueden compartir como imagen -->
+<div class="story" id="story" hidden role="dialog" aria-modal="true" aria-label="Tu mes en cifras">
+  <div class="story-bars" id="storyBars" aria-hidden="true"></div>
+  <button type="button" class="story-x" data-act="storyClose">Cerrar</button>
+  <div class="story-slide" id="storySlide" aria-live="polite"></div>
+  <div class="story-tap" data-dir="l" aria-hidden="true"></div>
+  <div class="story-tap" data-dir="r" aria-hidden="true"></div>
+  <div class="story-foot">
+    <label class="check"><input type="checkbox" id="storyHide"><span>Ocultar montos</span></label>
+    <button type="button" class="btn" id="storyShare" data-act="storyShare" hidden>Compartir imagen</button>
+  </div>
 </div>
 <div class="achv" id="achv" hidden role="status" aria-live="polite">
   <span class="achv-ic" id="achvIc" aria-hidden="true"></span>

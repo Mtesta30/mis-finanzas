@@ -275,10 +275,10 @@ function remindersHTML(){
 }
 
 /* bloques del Resumen que se pueden reordenar: tamaño (f completo, m completo en celular, s mitad, h mitad en computadora) y orden de fábrica */
-const BLOCK_SIZE={pend:"f",remind:"f",disp:"m",rit:"h",ing:"s",egr:"s",aho:"m",reg:"h",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
-const BLOCK_DEFAULT=["pend","remind","disp","rit","ing","egr","aho","reg","fijos","gastos","salmes","salbase"];
+const BLOCK_SIZE={pend:"f",remind:"f",mes:"f",disp:"m",rit:"h",ing:"s",egr:"s",aho:"m",reg:"h",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
+const BLOCK_DEFAULT=["pend","remind","mes","disp","rit","ing","egr","aho","reg","fijos","gastos","salmes","salbase"];
 /* en el modo edición cada bloque se reduce a una ficha liviana (ícono y nombre): moverla es mucho más fluido que mover el panel completo */
-const BLOCK_CHIP={pend:["Pagos detectados","movimientos"],remind:["Pagos por atender","fijos"],disp:["Disponible","resumen"],rit:["Ritmo del día","presupuestos"],ing:["Ingresos","up"],egr:["Egresos","down"],aho:["Ahorrado","metas"],
+const BLOCK_CHIP={mes:["Tu mes en cifras","historial"],pend:["Pagos detectados","movimientos"],remind:["Pagos por atender","fijos"],disp:["Disponible","resumen"],rit:["Ritmo del día","presupuestos"],ing:["Ingresos","up"],egr:["Egresos","down"],aho:["Ahorrado","metas"],
   reg:["Registrar","plus"],fijos:["Pagos fijos","fijos"],gastos:["En qué se va tu dinero","presupuestos"],salmes:["Salario del mes","deudas"],salbase:["Salario base","deudas"]};
 function blockOrder(){
   const order=arr(cfg.widgets&&cfg.widgets.orden).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i);
@@ -328,6 +328,7 @@ function vResumen(){
   const B={
     pend:pendHTML,
     remind:remindersHTML,
+    mes:mesBanner,
     disp:()=>k.disp, rit:ritHTML, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho,
     reg:()=>`<section class="panel"><div><h2>Registrar</h2><p class="sub">Anota un movimiento de ${mName(cur)}.</p></div>
       <div class="quickrow"><button type="button" class="qbtn q-gasto" data-act="goMov" data-id="gasto">Registrar gasto</button><button type="button" class="qbtn q-ingreso" data-act="goMov" data-id="ingreso">Registrar ingreso</button></div></section>`,
@@ -469,7 +470,7 @@ function vHist(){
   const ks=[];for(let i=5;i>=0;i--)ks.push(shift(cur,-i));
   const ts=ks.map(totals);const max=Math.max(1,...ts.map(t=>Math.max(t.ingresos,t.egresos)));
   return `<section class="panel"><div class="split"><div><h2>Últimos 6 meses</h2><p class="sub">Ingresos frente a egresos hasta ${mName(cur)}.</p></div><div class="legend"><span>Ingresos</span><span class="o">Egresos</span></div></div>
-  <div><button type="button" class="btn ghost sm" data-act="openExport">Exportar mis datos</button></div>
+  <div class="row-actions start"><button type="button" class="btn sm" data-act="openStory" data-id="${cur}">Tu mes en cifras</button><button type="button" class="btn ghost sm" data-act="openExport">Exportar mis datos</button></div>
   <div class="chart">${ts.map((t,i)=>`<div class="col" title="${mName(ks[i])}"><i class="ci" style="height:${t.ingresos/max*100}%"></i><i class="co" style="height:${t.egresos/max*100}%"></i></div>`).join("")}</div>
   <div class="xl">${ks.map(k=>`<span>${mName(k,true)}</span>`).join("")}</div>
   <div class="tbl"><table><thead><tr><th>Mes</th><th>Ingresos</th><th>Egresos</th><th>Ahorro</th><th>Balance</th></tr></thead><tbody>
@@ -553,6 +554,122 @@ function racHTML(){
     ${r.hoy?"":`<button type="button" class="btn ghost sm" data-act="diaLibre">Hoy no gasté nada</button>`}
     <div class="rac-bdgs">${LOGROS.map(l=>`<button type="button" class="bdg${on.includes(l[0])?" on":""}" data-act="bdg" data-id="${l[0]}" aria-label="${esc(l[1])}${on.includes(l[0])?"":" (bloqueado)"}"><span class="bi">${svg(l[3])}</span><span class="bn">${esc(l[1])}</span></button>`).join("")}</div>
     <span class="note">${on.length} de ${LOGROS.length} logros</span></div>`;
+}
+
+/* ---------- Tu mes en cifras: historias animadas que se pueden compartir como imagen ---------- */
+const capital=s=>s.charAt(0).toUpperCase()+s.slice(1);
+function mesResumen(k){
+  const m=month(k),t=totals(k),movs=m.movs||[],gastos=movs.filter(x=>x.tipo==="gasto");
+  const mayor=gastos.slice().sort((a,b)=>b.monto-a.monto)[0]||null;
+  const porCat={};gastos.forEach(x=>{porCat[x.cat]=(porCat[x.cat]||0)+x.monto;});
+  const topCat=Object.entries(porCat).sort((a,b)=>b[1]-a[1])[0]||null,totalGastos=sum(gastos.map(x=>x.monto));
+  const dias=[...new Set(movs.map(x=>x.fecha).filter(f=>f&&f.startsWith(k)))].map(dayNum).sort((a,b)=>a-b);
+  let mejor=0,run=0,prev=null;for(const n of dias){run=(prev!==null&&n===prev+1)?run+1:1;mejor=Math.max(mejor,run);prev=n;}
+  return {k,t,mayor,topCat,totalGastos,dias:dias.length,mejor,pctAhorro:t.ingresos?Math.round(t.ahorro/t.ingresos*100):0,
+    pctGasto:t.ingresos?Math.round(t.egresos/t.ingresos*100):0,pctTop:topCat&&totalGastos?Math.round(topCat[1]/totalGastos*100):0,hay:movs.length>0||t.ingresos>0};
+}
+let story=null;
+const reduced=()=>matchMedia("(prefers-reduced-motion:reduce)").matches;
+function openStory(k){
+  if(!/^20\d\d-(0[1-9]|1[0-2])$/.test(k||""))return;
+  const r=mesResumen(k);if(!r.hay)return toast("Ese mes todavía no tiene movimientos.");
+  story={r,i:0,hide:false,slides:[]};document.getElementById("storyHide").checked=false;
+  buildSlides();
+  document.documentElement.classList.add("noscroll");
+  ["topbar","appView","tabs"].forEach(id=>{document.getElementById(id).inert=true;});
+  document.getElementById("story").hidden=false;renderStory();
+}
+function closeStory(){
+  if(!story)return;story=null;
+  document.getElementById("story").hidden=true;document.documentElement.classList.remove("noscroll");
+  ["topbar","appView","tabs"].forEach(id=>{document.getElementById(id).inert=false;});
+}
+function buildSlides(){
+  const s=story,r=s.r,t=r.t,h=s.hide,a=n=>h?`<span class="cur">•••</span>`:`<span class="cnt" data-to="${Math.round(n)}">${moneyBig(n)}</span>`;
+  const L=[];
+  L.push(`<div class="s-k">Tu mes en cifras</div><div class="s-big">${esc(capital(mName(r.k)))}</div><div class="s-sub">Un repaso rápido de cómo te fue.</div>`);
+  L.push(h?`<div class="s-k">Lo que entró y lo que salió</div><div class="s-big">${r.pctGasto}<small>%</small></div><div class="s-sub">Gastaste el ${r.pctGasto} % de lo que entró este mes.</div>`
+    :`<div class="s-k">Entraron</div><div class="s-big">${a(t.ingresos)}</div><div class="s-k">Salieron</div><div class="s-big">${a(t.egresos)}</div>`);
+  L.push(t.ahorro>0?`<div class="s-k">Ahorraste</div><div class="s-big">${h?`${r.pctAhorro}<small>%</small>`:a(t.ahorro)}</div><div class="s-sub">${r.pctAhorro} % de tus ingresos${r.pctAhorro>=10?". ¡Bien hecho!":"."}</div>`
+    :`<div class="s-k">Ahorro</div><div class="s-big">Este mes no hubo</div><div class="s-sub">El próximo puede ser el tuyo.</div>`);
+  if(r.mayor)L.push(`<div class="s-k">Tu mayor gasto</div><div class="s-big">${h?esc(r.mayor.desc||r.mayor.cat):a(r.mayor.monto)}</div><div class="s-sub">${h?esc(r.mayor.cat):esc((r.mayor.desc||"Sin descripción")+" · "+r.mayor.cat)}</div>`);
+  if(r.topCat)L.push(`<div class="s-k">Tu categoría estrella</div><div class="s-big">${esc(r.topCat[0])}</div><div class="s-sub">${r.pctTop} % de tus gastos${h?".":" · "+moneyFmt.format(Math.round(r.topCat[1]))}</div>`);
+  if(r.dias)L.push(`<div class="s-k">Constancia</div><div class="s-big">${r.dias} <small>${r.dias===1?"día":"días"}</small></div><div class="s-sub">con movimientos registrados. Tu mejor racha del mes: ${r.mejor} ${r.mejor===1?"día":"días"}.</div>`);
+  L.push(`<div class="s-k">En resumen</div><div class="s-card"><b>${esc(capital(mName(r.k)))}</b>
+    <span>${t.ahorro>0?(h?`Ahorré el ${r.pctAhorro} % de mis ingresos`:`Ahorré ${moneyFmt.format(Math.round(t.ahorro))}`):"Sin ahorro este mes"}</span>
+    <span>${h?`Gasté el ${r.pctGasto} % de lo que entró`:`Entró ${moneyFmt.format(Math.round(t.ingresos))}, salió ${moneyFmt.format(Math.round(t.egresos))}`}</span>
+    ${r.topCat?`<span>Categoría estrella: ${esc(r.topCat[0])}</span>`:""}
+    ${r.dias?`<span>${r.dias} días registrando · racha de ${r.mejor}</span>`:""}</div><div class="s-sub">Toca Compartir imagen para guardarla o enviarla.</div>`);
+  s.slides=L;
+}
+function renderStory(){
+  const s=story;if(!s)return;
+  const last=s.i===s.slides.length-1;
+  document.getElementById("storyBars").innerHTML=s.slides.map((_,j)=>`<i class="${j<s.i||(j===s.i&&last)?"done":j===s.i?"on":""}"></i>`).join("");
+  const el=document.getElementById("storySlide");el.innerHTML=s.slides[s.i];el.classList.toggle("last",last);
+  document.getElementById("storyShare").hidden=!last;
+  if(!reduced())animateCounts();
+}
+function animateCounts(){
+  document.querySelectorAll("#storySlide .cnt").forEach(el=>{
+    const to=+el.dataset.to,t0=performance.now(),dur=900;el.innerHTML=moneyBig(0);
+    const step=now=>{const p=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-p,3);el.innerHTML=moneyBig(to*e);if(p<1&&story)requestAnimationFrame(step);};
+    requestAnimationFrame(step);
+  });
+}
+function storyGo(d){
+  const s=story;if(!s)return;
+  const n=s.i+d;if(n<0)return;if(n>=s.slides.length)return;
+  s.i=n;renderStory();
+}
+document.addEventListener("animationend",e=>{if(story&&e.animationName==="storyBar")storyGo(1);},true);
+/* toque en la mitad izquierda: atrás; derecha: adelante; mantener presionado: pausa */
+let storyPress=null;
+document.addEventListener("pointerdown",e=>{
+  const z=e.target.closest&&e.target.closest(".story-tap");if(!z||!story)return;
+  storyPress={t:performance.now(),dir:z.dataset.dir==="l"?-1:1,x:e.clientX,y:e.clientY};document.getElementById("story").classList.add("paused");
+});
+const storyEnd=e=>{
+  if(!storyPress)return;const p=storyPress;storyPress=null;
+  document.getElementById("story").classList.remove("paused");
+  if(e.type==="pointerup"&&performance.now()-p.t<350&&Math.hypot(e.clientX-p.x,e.clientY-p.y)<12)storyGo(p.dir);
+};
+document.addEventListener("pointerup",storyEnd);document.addEventListener("pointercancel",storyEnd);
+document.getElementById("storyHide").addEventListener("change",e=>{if(!story)return;story.hide=e.target.checked;buildSlides();renderStory();});
+/* imagen para compartir (1080 x 1350) con el resumen del mes */
+async function shareStory(){
+  const s=story;if(!s)return;
+  const r=s.r,t=r.t,h=s.hide,W=1080,H=1350,c=document.createElement("canvas");c.width=W;c.height=H;
+  const g=c.getContext("2d"),cs=getComputedStyle(document.documentElement);
+  const acc=cs.getPropertyValue("--accent").trim()||"#2f5bea",ink=cs.getPropertyValue("--accent-ink").trim()||"#ffffff";
+  g.fillStyle=acc;g.fillRect(0,0,W,H);
+  const gr=g.createLinearGradient(0,0,W*.7,H*.5);gr.addColorStop(0,"rgba(255,255,255,.24)");gr.addColorStop(1,"rgba(255,255,255,0)");g.fillStyle=gr;g.fillRect(0,0,W,H);
+  const font=(w,px)=>`${w} ${px}px ui-rounded,-apple-system,"SF Pro Rounded","Segoe UI",system-ui,sans-serif`;
+  const fit=(txt,w,px,maxW)=>{let p=px;g.font=font(w,p);while(g.measureText(txt).width>maxW&&p>24){p-=4;g.font=font(w,p);}return p;};
+  g.fillStyle=ink;g.textBaseline="alphabetic";
+  g.globalAlpha=.8;g.font=font(600,44);g.fillText("Mi mes en cifras",80,150);g.globalAlpha=1;
+  const title=capital(mName(r.k));fit(title,700,120,W-160);g.fillText(title,80,300);
+  const rows=[
+    ["Ahorro",t.ahorro>0?(h?`${r.pctAhorro} % de mis ingresos`:moneyFmt.format(Math.round(t.ahorro))):"Este mes no hubo"],
+    [h?"Gasté":"Entró y salió",h?`${r.pctGasto} % de lo que entró`:`${moneyFmt.format(Math.round(t.ingresos))}  /  ${moneyFmt.format(Math.round(t.egresos))}`],
+    ["Categoría estrella",r.topCat?`${r.topCat[0]} · ${r.pctTop} %`:"—"],
+    ["Constancia",r.dias?`${r.dias} días · racha de ${r.mejor}`:"—"]
+  ];
+  let y=470;
+  rows.forEach(([lab,val])=>{
+    g.globalAlpha=.78;g.font=font(600,40);g.fillText(lab,80,y);g.globalAlpha=1;
+    fit(val,700,84,W-160);g.fillText(val,80,y+96);y+=190;
+  });
+  g.globalAlpha=.8;g.font=font(600,40);g.fillText("Mis Finanzas",80,H-80);g.globalAlpha=1;
+  const blob=await new Promise(res=>c.toBlob(res,"image/png"));
+  if(!blob)return toast("No se pudo crear la imagen.");
+  shareBlob("mi-mes-"+r.k+".png","image/png",blob);
+}
+function mesBanner(){
+  if(cur!==mk(today)||today.getDate()>7)return "";
+  const prev=shift(mk(today),-1),r=mesResumen(prev);if(!r.hay)return "";
+  return `<section class="panel mesbanner"><div><h2>Tu ${esc(mName(prev))} en cifras</h2><p class="sub">Un repaso animado de cómo te fue. Lo puedes compartir como imagen.</p></div>
+    <div><button type="button" class="btn" data-act="openStory" data-id="${prev}">Verlo ahora</button></div></section>`;
 }
 
 /* ventana propia de rachas y logros */
@@ -726,6 +843,9 @@ document.addEventListener("click",e=>{
       const g=cfg.metas.find(x=>x.id===id);if(!g)break;
       const on=!(g.redondeo>0);cfg.metas.forEach(x=>{x.redondeo=0;});if(on)g.redondeo=1000;
       saveCfg();render();toast(on?"Redondeo activado en "+g.nombre:"Redondeo desactivado");break;}
+    case "openStory":openStory(id);break;
+    case "storyClose":closeStory();break;
+    case "storyShare":shareStory();break;
     case "editDone":exitEdit();break;
     case "editReset":cfg.widgets={orden:[]};saveCfg();cleanupEdit();render();enterEdit();toast("Orden original restablecido");break;
     case "rail":{const de=document.documentElement;de.classList.add("railanim");setTimeout(()=>de.classList.remove("railanim"),300);const on=de.classList.toggle("rail");try{localStorage.setItem("fin.rail",on?"1":"0")}catch(_){ }renderTabs();const nb=document.querySelector(".collapse-btn");if(nb)nb.focus({preventScroll:true});break;}
@@ -973,6 +1093,7 @@ document.addEventListener("click",e=>{if(popOpen&&!e.target.closest(".month-pill
 
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape")return;
+  if(story){closeStory();return;}
   if(editing){exitEdit();return;}
   if(popOpen){closeMonthPop(true);return;}
   if(!$("cropBox").hidden){cancelCrop();return;}
@@ -1189,8 +1310,8 @@ function csvCell(v){
   if(/^[=+\-@\t\r]/.test(s))s="'"+s;
   return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
 }
-async function saveFile(name,mime,text){
-  const blob=new Blob([text],{type:mime+";charset=utf-8"});
+async function saveFile(name,mime,text){return shareBlob(name,mime,new Blob([text],{type:mime+";charset=utf-8"}));}
+async function shareBlob(name,mime,blob){
   if(matchMedia("(pointer:coarse)").matches){
     try{
       const file=new File([blob],name,{type:mime});
