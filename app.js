@@ -124,7 +124,7 @@ function cleanCfg(c){
 }
 function cleanMonth(m){
   const o={movs:arr(m.movs).map(x=>{const r={id:safeId(x.id),tipo:["gasto","ingreso","ahorro"].includes(x.tipo)?x.tipo:"gasto",monto:n0(x.monto),cat:str(x.cat,40),desc:str(x.desc),fecha:/^\d{4}-\d{2}-\d{2}$/.test(x.fecha)?x.fecha:""};
-      if(x.metaId)r.metaId=safeId(x.metaId);if(x.deudaId)r.deudaId=safeId(x.deudaId);return r;}),pagados:{}};
+      if(x.metaId)r.metaId=safeId(x.metaId);if(x.deudaId)r.deudaId=safeId(x.deudaId);if(x.esp===true&&r.tipo==="gasto")r.esp=true;return r;}),pagados:{}};
   Object.keys(m.pagados&&typeof m.pagados==="object"?m.pagados:{}).forEach(k=>{if(/^[a-z0-9]{1,40}$/i.test(k))o.pagados[k]=true;});
   if(m.salario!=null)o.salario=n0(m.salario);if(m.fijosTotal!=null)o.fijosTotal=n0(m.fijosTotal);if(m.salarioMes!=null)o.salarioMes=n0(m.salarioMes);
   return o;
@@ -190,6 +190,7 @@ function movForm(){
     <label class="f">Categoría<select id="mv-cat" name="cat">${cats.map(c=>`<option>${esc(c)}</option>`).join("")}</select></label>
     <label class="f wide">Descripción<input id="mv-desc" name="desc" placeholder="${movTipo==="gasto"?"Almuerzo, Uber, mercado...":"Proyecto freelance, venta..."}"></label>
     <label class="f">Fecha<input id="mv-fecha" name="fecha" type="date" value="${def}"></label>
+    ${movTipo==="ingreso"?"":`<label class="check esp"><input type="checkbox" name="esp" value="1"><span>Salida o imprevisto <small class="sub">(no cuenta contra tu ritmo de hoy)</small></span></label>`}
     <button class="btn">${movTipo==="ingreso"?"Agregar ingreso":"Agregar gasto"}</button>
   </form>`;
 }
@@ -231,6 +232,7 @@ function pendHTML(){
       return `<li><div class="li-main"><b>${esc(p.comercio||"Pago con Apple Pay")}</b><small>${esc(fmt(p.creado))}${p.tarjeta?" · "+esc(p.tarjeta):""}</small></div>
       <form class="row" data-form="apay" data-id="${p.id}"><label class="f">Monto (COP)<input name="monto" inputmode="numeric" value="${esc(val)}" required></label>
         <label class="f">Categoría<select name="cat">${cats.map(c=>`<option${c===sel?" selected":""}>${esc(c)}</option>`).join("")}</select></label>
+        <label class="check esp"><input type="checkbox" name="esp" value="1"><span>Salida o imprevisto</span></label>
         <button class="btn sm">Registrar</button><button type="button" class="icon" data-act="apayDel" data-id="${p.id}">Descartar</button></form></li>`;}).join("")}</ul>
     ${pend.length>5?`<p class="sub">y ${pend.length-5} más. Se muestran de a cinco.</p>`:""}</section>`;
 }
@@ -249,14 +251,49 @@ function remindersHTML(){
 }
 
 /* bloques del Resumen que se pueden reordenar: tamaño (f completo, m completo en celular, s mitad, h mitad en computadora) y orden de fábrica */
-const BLOCK_SIZE={pend:"f",remind:"f",disp:"m",ing:"s",egr:"s",aho:"m",reg:"f",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
-const BLOCK_DEFAULT=["pend","remind","disp","ing","egr","aho","reg","fijos","gastos","salmes","salbase"];
+const BLOCK_SIZE={pend:"f",remind:"f",disp:"m",rit:"h",ing:"s",egr:"s",aho:"m",reg:"h",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
+const BLOCK_DEFAULT=["pend","remind","disp","rit","ing","egr","aho","reg","fijos","gastos","salmes","salbase"];
 /* en el modo edición cada bloque se reduce a una ficha liviana (ícono y nombre): moverla es mucho más fluido que mover el panel completo */
-const BLOCK_CHIP={pend:["Pagos detectados","movimientos"],remind:["Pagos por atender","fijos"],disp:["Disponible","resumen"],ing:["Ingresos","up"],egr:["Egresos","down"],aho:["Ahorrado","metas"],
+const BLOCK_CHIP={pend:["Pagos detectados","movimientos"],remind:["Pagos por atender","fijos"],disp:["Disponible","resumen"],rit:["Ritmo del día","presupuestos"],ing:["Ingresos","up"],egr:["Egresos","down"],aho:["Ahorrado","metas"],
   reg:["Registrar","plus"],fijos:["Pagos fijos","fijos"],gastos:["En qué se va tu dinero","presupuestos"],salmes:["Salario del mes","deudas"],salbase:["Salario base","deudas"]};
 function blockOrder(){
-  const saved=arr(cfg.widgets&&cfg.widgets.orden).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i);
-  return [...saved,...BLOCK_DEFAULT.filter(id=>!saved.includes(id))];
+  const order=arr(cfg.widgets&&cfg.widgets.orden).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i);
+  /* los bloques nuevos que aún no están en tu orden guardado entran junto a su vecino de fábrica, no al final */
+  BLOCK_DEFAULT.forEach((id,i)=>{
+    if(order.includes(id))return;
+    const prev=BLOCK_DEFAULT.slice(0,i).reverse().find(x=>order.includes(x));
+    order.splice(prev?order.indexOf(prev)+1:0,0,id);
+  });
+  return order;
+}
+
+/* Ritmo del día: cuánto puedes gastar hoy si repartes lo que te queda entre los días que faltan */
+function ritHTML(){
+  if(cur!==mk(today))return "";
+  const t=totals(cur),m=month(cur),now=new Date();
+  const dim=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),day=now.getDate(),left=dim-day+1;
+  /* los gastos marcados como "salida o imprevisto" bajan tu disponible (el dinero sí salió) y se reparten entre los días que quedan,
+     pero no cuentan contra el ritmo de hoy ni pintan el anillo de rojo */
+  const hoy=ymd(now),gastosHoy=m.movs.filter(x=>x.tipo==="gasto"&&x.fecha===hoy);
+  const gastoHoy=sum(gastosHoy.filter(x=>!x.esp).map(x=>x.monto)),espHoy=sum(gastosHoy.filter(x=>x.esp).map(x=>x.monto));
+  const allowance=(t.disp+gastoHoy)/left,rest=allowance-gastoHoy;
+  /* ritmo del mes: lo que has gastado (sin salidas) frente a lo que "te tocaba" gastar hasta hoy */
+  const espMes=sum(m.movs.filter(x=>x.tipo==="gasto"&&x.esp).map(x=>x.monto));
+  const varBudget=t.ingresos-t.fijos-t.ahorro-espMes,ideal=varBudget>0?varBudget*day/dim:0,real=t.gastos-espMes;
+  const frac=allowance>0?Math.max(0,gastoHoy/allowance):0,state=t.disp+gastoHoy<=0||frac>1?"over":frac>=.85?"warn":"ok";
+  let msg="";
+  if(t.disp+gastoHoy<=0)msg="Este mes ya no te queda margen. Cada gasto nuevo lo pasa de tu presupuesto.";
+  else if(frac>1)msg="Hoy ya gastaste más de lo que te tocaba. Mañana se reparte lo que queda.";
+  else if(espHoy>0)msg=`Hoy hubo una salida o imprevisto de ${money(espHoy)}. Lo repartimos entre los días que quedan.`;
+  else if(ideal>0){
+    const diff=Math.round((real-ideal)/ideal*100);
+    msg=Math.abs(diff)<=5?"Vas justo en tu ritmo. Así se hace.":diff<-50?"Vas muy tranquilo este mes: te sobra margen.":diff<0?`Vas ${-diff} % por debajo de tu ritmo. ¡Muy bien!`:`Vas ${diff} % por encima de tu ritmo. Ve con calma unos días.`;
+  }
+  const C=2*Math.PI*42,dash=Math.min(1,frac)*C;
+  return `<div class="kpi rit"><div class="rit-wrap">
+    <svg class="ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="r-bg" cx="50" cy="50" r="42"/><circle class="r-fg ${state}" cx="50" cy="50" r="42" stroke-dasharray="${dash.toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 50 50)"/><text x="50" y="58" text-anchor="middle">${Math.round(Math.min(frac,9.99)*100)}%</text></svg>
+    <div class="rit-text"><span class="lbl">Hoy puedes gastar</span><span class="val">${moneyBig(Math.max(0,rest))}</span><span class="note">Quedan ${left} ${left===1?"día":"días"} del mes, contando hoy</span></div></div>
+    ${msg?`<p class="sub rit-msg ${state}">${msg}</p>`:""}</div>`;
 }
 function vResumen(){
   const t=totals(cur), m=month(cur), sp=spentByCat(cur), k=kpiCards(cur);
@@ -267,7 +304,7 @@ function vResumen(){
   const B={
     pend:pendHTML,
     remind:remindersHTML,
-    disp:()=>k.disp, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho,
+    disp:()=>k.disp, rit:ritHTML, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho,
     reg:()=>`<section class="panel"><div><h2>Registrar</h2><p class="sub">Anota un movimiento de ${mName(cur)}.</p></div>
       <div class="quickrow"><button type="button" class="qbtn q-gasto" data-act="goMov" data-id="gasto">Registrar gasto</button><button type="button" class="qbtn q-ingreso" data-act="goMov" data-id="ingreso">Registrar ingreso</button></div></section>`,
     fijos:()=>`<section class="panel"><div class="split"><h2>Pagos fijos</h2><span class="chip ${pendF.length?"warn":"good"}">${cfg.fijos.length?(pendF.length?pendF.length+" pendientes":"Todos pagados"):"Sin pagos fijos"}</span></div>
@@ -295,7 +332,7 @@ function vMov(){
   const total=ing?t.ingresos:t.gastos+t.ahorro;
   const note=ing?`Salario ${money(t.salario)} + extras ${money(t.extra)}`:`Variables ${money(t.gastos)}${t.ahorro?` · aportes a metas ${money(t.ahorro)}`:""} · los pagos fijos están en su pestaña`;
   const salRow=ing&&t.salario>0?`<li><div class="li-main"><b>Salario</b><small>${m.salarioMes!=null?"Ajustado para este mes":"Salario base"}</small></div><span class="num in">+${money(t.salario)}</span><span class="chip">Fijo</span></li>`:"";
-  const rows=movs.map(x=>`<li><div class="li-main"><b>${esc(x.desc||x.cat)}</b><small>${esc(x.cat)} · ${esc(x.fecha||"")}${x.tipo==="ahorro"?" · aporte a meta":""}</small></div><span class="num ${ing?"in":"out"}">${ing?"+":"-"}${money(x.monto)}</span><button class="icon" data-act="delMov" data-id="${x.id}">Borrar</button></li>`).join("");
+  const rows=movs.map(x=>`<li><div class="li-main"><b>${esc(x.desc||x.cat)}</b><small>${esc(x.cat)} · ${esc(x.fecha||"")}${x.tipo==="ahorro"?" · aporte a meta":""}${x.esp?" · salida o imprevisto":""}</small></div><span class="num ${ing?"in":"out"}">${ing?"+":"-"}${money(x.monto)}</span><button class="icon" data-act="delMov" data-id="${x.id}">Borrar</button></li>`).join("");
   return `<div class="modeseg" role="group" aria-label="Tipo de movimiento">
     <button type="button" class="m-gasto" data-act="tipo" data-id="gasto" aria-pressed="${!ing}">Gastos</button>
     <button type="button" class="m-ingreso" data-act="tipo" data-id="ingreso" aria-pressed="${ing}">Ingresos</button>
@@ -587,7 +624,8 @@ document.addEventListener("submit",e=>{
       const cat=gastoCats().includes(fd.cat)?fd.cat:"Otros";
       let fecha=ymd(p.creado);if(!/^20\d\d-\d\d-\d\d$/.test(fecha))fecha=cur+"-01";
       rememberCat(p.comercio,cat);
-      addMov(fecha.slice(0,7),{id:uidv(),tipo:"gasto",monto:v,cat,desc:p.comercio||"Pago con Apple Pay",fecha});
+      const mv={id:uidv(),tipo:"gasto",monto:v,cat,desc:p.comercio||"Pago con Apple Pay",fecha};if(fd.esp==="1")mv.esp=true;
+      addMov(fecha.slice(0,7),mv);
       dropPend(id);toast("Gasto registrado");return;}
     case "cat":{addCat(fd.nombre,fd.tipo);f.reset();return;}
     case "pass":changePassword(f,fd);return;
@@ -600,7 +638,8 @@ document.addEventListener("submit",e=>{
     case "salario":{const v=num(fd.salario);if(v<=0)return toast("Escribe un salario mayor a cero.");cfg.salario=v;saveCfg();toast("Salario base guardado");break;}
     case "salarioMes":{const v=num(fd.salario);if(v<0)return toast("Escribe un salario válido.");const m=month(cur);months[cur]={...months[cur],movs:m.movs,pagados:m.pagados,salarioMes:v};saveMonth(cur);toast("Salario de "+mName(cur)+" guardado");break;}
     case "mov":{const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");const fecha=fd.fecha||cur+"-01";const k=fecha.slice(0,7);
-      addMov(k,{id:uidv(),tipo:movTipo,monto:v,cat:fd.cat,desc:(fd.desc||"").trim(),fecha});if(k!==cur)cur=k;toast(movTipo==="gasto"?"Gasto registrado":"Ingreso registrado");break;}
+      const mv={id:uidv(),tipo:movTipo,monto:v,cat:fd.cat,desc:(fd.desc||"").trim(),fecha};if(movTipo==="gasto"&&fd.esp==="1")mv.esp=true;
+      addMov(k,mv);if(k!==cur)cur=k;toast(movTipo==="gasto"?"Gasto registrado":"Ingreso registrado");break;}
     case "fijo":{const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");cfg.fijos=[...cfg.fijos,{id:uidv(),nombre:fd.nombre.trim(),monto:v,cat:fd.cat,dia:parseInt(fd.dia)||null}];saveCfg();toast("Pago fijo agregado");break;}
     case "meta":{const v=num(fd.objetivo);if(v<=0)return toast("Escribe un objetivo mayor a cero.");cfg.metas=[...cfg.metas,{id:uidv(),nombre:fd.nombre.trim(),objetivo:v,ahorrado:0,fecha:fd.fecha||""}];saveCfg();toast("Meta creada");break;}
     case "aporte":{const v=num(fd.monto);if(v<=0)return toast("Escribe un aporte mayor a cero.");const g=cfg.metas.find(g=>g.id===id);if(!g)return;g.ahorrado+=v;saveCfg();

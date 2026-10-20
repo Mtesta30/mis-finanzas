@@ -310,6 +310,27 @@ html.noscroll{overflow:hidden}
   .layer:not(.open) .sheet{transition-duration:160ms}
   .grab{display:none}
 }
+label.check.esp{flex:1 1 100%;align-items:flex-start;font-size:.9rem}
+label.check.esp small{display:block}
+label.check.esp input{margin-top:2px}
+/* Ritmo del día */
+.rit{gap:10px}
+.rit-wrap{display:flex;align-items:center;gap:16px}
+.ring{width:88px;height:88px;flex:none}
+.ring circle{fill:none;stroke-width:10;stroke-linecap:round}
+.ring .r-bg{stroke:var(--sunk)}
+.ring .r-fg{stroke:var(--accent)}
+.ring .r-fg.warn{stroke:var(--warn)}
+.ring .r-fg.over{stroke:var(--bad)}
+.ring text{font:600 20px var(--f-num);fill:var(--fg);letter-spacing:-.03em}
+.rit-text{display:grid;gap:3px;min-width:0}
+.rit-text .lbl{font-size:.82rem;font-weight:600;color:var(--muted)}
+.rit-text .val{font-family:var(--f-num);font-size:1.9rem;font-weight:600;line-height:1.1;letter-spacing:-.035em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rit-text .val .cur{font-size:.62em;font-weight:500;opacity:.55;margin-right:.14em;vertical-align:.16em;letter-spacing:0}
+.rit-text .note{font-size:.8rem;line-height:1.35;color:var(--muted)}
+.rit-msg{font-weight:500;color:var(--fg)}
+.rit-msg.warn{color:var(--warn)}
+.rit-msg.over{color:var(--bad)}
 /* Resumen en bloques: se pueden reordenar. Mantén presionado un bloque para editar y arrástralo. */
 .blocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch}
 .blk{position:relative;display:grid;min-width:0;-webkit-touch-callout:none}
