@@ -483,24 +483,42 @@ function vHist(){
 const dayNum=s=>{const [y,m,d]=String(s).split("-").map(Number);return Math.round(Date.UTC(y,m-1,d)/86400000);};
 const LOGROS=[
   ["primero","Primer paso","Registra tu primer movimiento","star",c=>c.total>=1],
-  ["r7","Una semana","7 días seguidos registrando","flame",c=>c.best>=7],
-  ["r30","Un mes entero","30 días seguidos registrando","flame",c=>c.best>=30],
+  ["r7","Una semana","7 días seguidos dentro de tu presupuesto","flame",c=>c.best>=7],
+  ["r30","Un mes entero","30 días seguidos dentro de tu presupuesto","flame",c=>c.best>=30],
   ["c100","Constante","100 movimientos registrados","historial",c=>c.total>=100],
   ["meta","Meta cumplida","Completa una meta de ahorro","metas",c=>c.metaOk],
   ["verde","Mes en verde","Cierra un mes con disponible positivo","check",c=>c.verde],
   ["ah10","Ahorrador","Ahorra el 10 % de tus ingresos en un mes","coin",c=>c.ah10],
   ["deuda","Libre de una deuda","Paga una deuda por completo","deudas",c=>c.deudaOk]
 ];
-/* días con movimientos (más los días que marcas como "no gasté nada"); la racha son los días seguidos que terminan hoy o ayer */
+/* Cada día suma solo a la racha desde tu primer movimiento. Un día la rompe únicamente si lo que gastaste ese día
+   (sin contar salidas o imprevistos) supera el presupuesto del día: lo que te queda para gastos variables en el mes, repartido entre sus días. */
+function diaEstado(){
+  const t=dayNum(ymd(new Date())),gasto=new Map(),lim=new Map();let start=null,total=0;
+  for(const k in months)for(const x of (months[k].movs||[])){
+    total++;if(!x.fecha)continue;
+    const n=dayNum(x.fecha);if(start===null||n<start)start=n;
+    if(x.tipo==="gasto"&&!x.esp)gasto.set(n,(gasto.get(n)||0)+x.monto);
+  }
+  const limite=k=>{
+    if(!lim.has(k)){
+      const tt=totals(k),mm=month(k),[y,mo]=k.split("-").map(Number),dim=new Date(y,mo,0).getDate();
+      const esp=sum((mm.movs||[]).filter(x=>x.tipo==="gasto"&&x.esp).map(x=>x.monto));
+      lim.set(k,tt.ingresos>0?Math.max(0,tt.ingresos-tt.fijos-tt.ahorro-esp)/dim:null);
+    }
+    return lim.get(k);
+  };
+  /* sin ingresos registrados no hay presupuesto con qué comparar: el día cuenta */
+  const ok=n=>{const g=gasto.get(n)||0;if(!g)return true;const L=limite(new Date(n*86400000).toISOString().slice(0,7));return L===null||g<=L+0.5;};
+  return {t,start,total,ok};
+}
 function rachaInfo(){
-  const libres=(cfg.logros&&cfg.logros.libres)||[],s=new Set(libres.map(dayNum)),t=dayNum(ymd(new Date()));
-  let total=0;
-  for(const k in months)for(const x of (months[k].movs||[])){total++;if(x.fecha)s.add(dayNum(x.fecha));}
-  let streak=0,d=s.has(t)?t:(s.has(t-1)?t-1:null);
-  if(d!==null)while(s.has(d)){streak++;d--;}
-  let best=0,run=0,prev=null;
-  for(const n of [...s].filter(n=>n<=t).sort((a,b)=>a-b)){run=(prev!==null&&n===prev+1)?run+1:1;best=Math.max(best,run);prev=n;}
-  return {streak,best,total,hoy:s.has(t),days:[6,5,4,3,2,1,0].map(i=>({on:s.has(t-i),l:["D","L","M","M","J","V","S"][new Date((t-i)*86400000).getUTCDay()]}))};
+  const {t,start,total,ok}=diaEstado(),L=["D","L","M","M","J","V","S"];
+  const days=[6,5,4,3,2,1,0].map(i=>{const n=t-i;return {on:start!==null&&n>=start&&ok(n),bad:start!==null&&n>=start&&n<=t&&!ok(n),l:L[new Date(n*86400000).getUTCDay()]};});
+  if(start===null||start>t)return {streak:0,best:0,total,hoy:false,days};
+  let streak=0,best=0;
+  for(let n=start;n<=t;n++){streak=ok(n)?streak+1:0;best=Math.max(best,streak);}
+  return {streak,best,total,hoy:ok(t),days};
 }
 function logroCtx(){
   const r=rachaInfo(),cm=mk(today);
@@ -546,12 +564,11 @@ function coinRain(){
 }
 function racHTML(){
   const r=rachaInfo(),c=logroCtx(),on=LOGROS.filter(l=>l[4](c)).map(l=>l[0]);
-  const msg=r.streak===0?"Registra un movimiento hoy para empezar tu racha.":!r.hoy?"Registra algo hoy para mantener tu racha.":r.streak>=7?"¡Vas muy bien! Sigue así.":"Hoy ya cuenta. Mañana, un día más.";
+  const msg=r.total===0?"Registra tu primer movimiento y tu racha empieza sola.":!r.hoy?"Hoy te pasaste del presupuesto del día y la racha volvió a cero. Mañana empiezas de nuevo.":r.streak>=7?"¡Vas muy bien! Cada día dentro de tu presupuesto suma solo.":"Cada día dentro de tu presupuesto suma solo, hayas registrado algo o no.";
   return `<div class="kpi rac">
     <div class="rac-head"><span class="rac-flame${r.streak?" lit":""}">${svg("flame")}</span><div class="rac-num"><span class="val">${r.streak} <small>${r.streak===1?"día":"días"}</small></span><span class="note">de racha · tu mejor: ${r.best}</span></div></div>
-    <div class="rac-days" aria-hidden="true">${r.days.map(d=>`<span class="rd${d.on?" on":""}">${d.l}</span>`).join("")}</div>
+    <div class="rac-days" aria-hidden="true">${r.days.map(d=>`<span class="rd${d.on?" on":d.bad?" bad":""}">${d.l}</span>`).join("")}</div>
     <p class="sub">${msg}</p>
-    ${r.hoy?"":`<button type="button" class="btn ghost sm" data-act="diaLibre">Hoy no gasté nada</button>`}
     <div class="rac-bdgs">${LOGROS.map(l=>`<button type="button" class="bdg${on.includes(l[0])?" on":""}" data-act="bdg" data-id="${l[0]}" aria-label="${esc(l[1])}${on.includes(l[0])?"":" (bloqueado)"}"><span class="bi">${svg(l[3])}</span><span class="bn">${esc(l[1])}</span></button>`).join("")}</div>
     <span class="note">${on.length} de ${LOGROS.length} logros</span></div>`;
 }
@@ -563,9 +580,11 @@ function mesResumen(k){
   const mayor=gastos.slice().sort((a,b)=>b.monto-a.monto)[0]||null;
   const porCat={};gastos.forEach(x=>{porCat[x.cat]=(porCat[x.cat]||0)+x.monto;});
   const topCat=Object.entries(porCat).sort((a,b)=>b[1]-a[1])[0]||null,totalGastos=sum(gastos.map(x=>x.monto));
-  const dias=[...new Set(movs.map(x=>x.fecha).filter(f=>f&&f.startsWith(k)))].map(dayNum).sort((a,b)=>a-b);
-  let mejor=0,run=0,prev=null;for(const n of dias){run=(prev!==null&&n===prev+1)?run+1:1;mejor=Math.max(mejor,run);prev=n;}
-  return {k,t,mayor,topCat,totalGastos,dias:dias.length,mejor,pctAhorro:t.ingresos?Math.round(t.ahorro/t.ingresos*100):0,
+  /* días del mes dentro del presupuesto del día (desde tu primer movimiento hasta hoy) y la mejor racha de ese mes */
+  const de=diaEstado(),n0m=dayNum(k+"-01"),[yy,mm2]=k.split("-").map(Number),n1m=Math.min(dayNum(k+"-"+String(new Date(yy,mm2,0).getDate()).padStart(2,"0")),de.t);
+  let dias=0,mejor=0,run=0;
+  if(de.start!==null)for(let n=Math.max(n0m,de.start);n<=n1m;n++){if(de.ok(n)){dias++;run++;mejor=Math.max(mejor,run);}else run=0;}
+  return {k,t,mayor,topCat,totalGastos,dias,mejor,pctAhorro:t.ingresos?Math.round(t.ahorro/t.ingresos*100):0,
     pctGasto:t.ingresos?Math.round(t.egresos/t.ingresos*100):0,pctTop:topCat&&totalGastos?Math.round(topCat[1]/totalGastos*100):0,hay:movs.length>0||t.ingresos>0};
 }
 let story=null;
@@ -594,12 +613,12 @@ function buildSlides(){
     :`<div class="s-k">Ahorro</div><div class="s-big">Este mes no hubo</div><div class="s-sub">El próximo puede ser el tuyo.</div>`);
   if(r.mayor)L.push(`<div class="s-k">Tu mayor gasto</div><div class="s-big">${h?esc(r.mayor.desc||r.mayor.cat):a(r.mayor.monto)}</div><div class="s-sub">${h?esc(r.mayor.cat):esc((r.mayor.desc||"Sin descripción")+" · "+r.mayor.cat)}</div>`);
   if(r.topCat)L.push(`<div class="s-k">Tu categoría estrella</div><div class="s-big">${esc(r.topCat[0])}</div><div class="s-sub">${r.pctTop} % de tus gastos${h?".":" · "+moneyFmt.format(Math.round(r.topCat[1]))}</div>`);
-  if(r.dias)L.push(`<div class="s-k">Constancia</div><div class="s-big">${r.dias} <small>${r.dias===1?"día":"días"}</small></div><div class="s-sub">con movimientos registrados. Tu mejor racha del mes: ${r.mejor} ${r.mejor===1?"día":"días"}.</div>`);
+  if(r.dias)L.push(`<div class="s-k">Dentro de tu presupuesto</div><div class="s-big">${r.dias} <small>${r.dias===1?"día":"días"}</small></div><div class="s-sub">sin pasarte del presupuesto del día. Tu mejor racha del mes: ${r.mejor} ${r.mejor===1?"día":"días"}.</div>`);
   L.push(`<div class="s-k">En resumen</div><div class="s-card"><b>${esc(capital(mName(r.k)))}</b>
     <span>${t.ahorro>0?(h?`Ahorré el ${r.pctAhorro} % de mis ingresos`:`Ahorré ${moneyFmt.format(Math.round(t.ahorro))}`):"Sin ahorro este mes"}</span>
     <span>${h?`Gasté el ${r.pctGasto} % de lo que entró`:`Entró ${moneyFmt.format(Math.round(t.ingresos))}, salió ${moneyFmt.format(Math.round(t.egresos))}`}</span>
     ${r.topCat?`<span>Categoría estrella: ${esc(r.topCat[0])}</span>`:""}
-    ${r.dias?`<span>${r.dias} días registrando · racha de ${r.mejor}</span>`:""}</div><div class="s-sub">Toca Compartir imagen para guardarla o enviarla.</div>`);
+    ${r.dias?`<span>${r.dias} días dentro del presupuesto · racha de ${r.mejor}</span>`:""}</div><div class="s-sub">Toca Compartir imagen para guardarla o enviarla.</div>`);
   s.slides=L;
 }
 function renderStory(){
@@ -653,7 +672,7 @@ async function shareStory(){
     ["Ahorro",t.ahorro>0?(h?`${r.pctAhorro} % de mis ingresos`:moneyFmt.format(Math.round(t.ahorro))):"Este mes no hubo"],
     [h?"Gasté":"Entró y salió",h?`${r.pctGasto} % de lo que entró`:`${moneyFmt.format(Math.round(t.ingresos))}  /  ${moneyFmt.format(Math.round(t.egresos))}`],
     ["Categoría estrella",r.topCat?`${r.topCat[0]} · ${r.pctTop} %`:"—"],
-    ["Constancia",r.dias?`${r.dias} días · racha de ${r.mejor}`:"—"]
+    ["Dentro del presupuesto",r.dias?`${r.dias} días · racha de ${r.mejor}`:"—"]
   ];
   let y=470;
   rows.forEach(([lab,val])=>{
@@ -1441,8 +1460,16 @@ function openMore(opener){
 renderTabs();
 (async()=>{
   const conf=window.FINANZAS_CONFIG||{};
-  if(!window.supabase||!conf.supabaseUrl||/TU-PROYECTO/.test(conf.supabaseUrl)){
+  if(!conf.supabaseUrl||/TU-PROYECTO/.test(conf.supabaseUrl)){
     showAuth();authMsg("Falta configurar la conexión a Supabase en el archivo config.js.");$("authForm").hidden=true;$("authSwitch").hidden=true;$("authForgot").hidden=true;return;
+  }
+  if(!window.supabase){
+    /* la librería no llegó a cargar (mala señal o archivo en caché incompleto): se ofrece reintentar en vez de culpar a la configuración */
+    showAuth();authMsg("No se pudo cargar la aplicación. Revisa tu conexión a internet e inténtalo de nuevo.");
+    $("authForm").hidden=true;$("authForgot").hidden=true;
+    const b=$("authSwitch");b.hidden=false;b.textContent="Reintentar";
+    b.replaceWith(b.cloneNode(true));$("authSwitch").addEventListener("click",()=>location.reload());
+    return;
   }
   /* la sesión vive en sessionStorage: desaparece al cerrar la ventana o la app. Si no estuviera disponible, queda solo en memoria. */
   const authStore=(()=>{

@@ -35,8 +35,8 @@ Pagos de Apple Pay (`supabase/apple-pay.sql`, se ejecuta aparte): tablas `atajo_
 
 ## Restricciones al rediseñar
 
-1. **CSP** (`vercel.json`): `script-src 'self' https://cdn.jsdelivr.net`. Nada de `<script>` en línea ni `onclick=`. Los estilos en línea sí están permitidos (`style-src 'unsafe-inline'`). Las fuentes son las del sistema (San Francisco en Apple; ya no se carga nada de Google Fonts, y `font-src` es solo `'self'`). Si agregas otro origen externo, actualiza la CSP.
-2. La librería de Supabase se carga con **SRI** (`integrity=`). Si cambias su versión, recalcula el hash.
+1. **CSP** (`vercel.json`): `script-src 'self'`. Nada de `<script>` en línea ni `onclick=`. Los estilos en línea sí están permitidos (`style-src 'unsafe-inline'`). Las fuentes son las del sistema (San Francisco en Apple; ya no se carga nada de Google Fonts, y `font-src` es solo `'self'`). Si agregas otro origen externo, actualiza la CSP.
+2. La librería de Supabase vive en `vendor/supabase-js-2.117.2.js` (copia exacta de jsdelivr, verificada con su hash) y se carga con **SRI** (`integrity=`). No depende de internet para arrancar y está en el `SHELL` del service worker. Si cambias su versión: descarga el archivo, recalcula el hash, actualiza `index.html` y `sw.js`.
 3. Las vistas se generan en `app.js` (`vResumen`, `vMov`, `vFijos`, `vPres`, `vMetas`, `vDeudas`, `vHist`, `kpis`, `movForm`). El rediseño visual debería hacerse sobre todo en el CSS de `index.html`, cambiando markup de `app.js` solo cuando haga falta, sin tocar clases que usa la lógica: `data-act`, `data-form`, `data-id`, `data-pres` y los `id` de inputs y de `#app`, `#tabs`, `#authView`, `#appView`, `#topbar`.
 4. Mantener tema claro y oscuro: tokens en `:root`, redefinidos en `@media (prefers-color-scheme: dark)`.
 5. Debe verse bien a 390px de ancho (uso principal en celular, instalada como PWA) y sin scroll horizontal.

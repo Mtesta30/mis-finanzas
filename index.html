@@ -379,6 +379,7 @@ label.check.esp input{margin-top:2px}
 .rac-days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .rd{display:grid;place-items:center;height:30px;border-radius:10px;background:var(--sunk);color:var(--muted);font:600 .75rem var(--f-body)}
 .rd.on{background:var(--accent);color:var(--accent-ink)}
+.rd.bad{background:var(--bad-soft);color:var(--bad)}
 .rac-bdgs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .bdg{display:grid;justify-items:center;gap:4px;padding:8px 2px;border:0;border-radius:14px;background:transparent;color:var(--muted);cursor:pointer;opacity:.45;transition:transform 120ms var(--ease-out)}
 .bdg:active{transform:scale(.95)}
@@ -870,7 +871,8 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   </section>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- Librería de Supabase 2.117.2 guardada en la propia app (mismo archivo y misma huella que en jsdelivr): ya no depende de la señal para cargar -->
+<script src="/vendor/supabase-js-2.117.2.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok"></script>
 <script src="/config.js"></script>
 <script src="/app.js"></script>
 </body>
