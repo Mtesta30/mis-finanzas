@@ -1623,7 +1623,7 @@ function resetPassForm(){
   document.querySelectorAll("#passForm .eye").forEach(b=>{$(b.dataset.id).type="password";b.setAttribute("aria-pressed","false");b.setAttribute("aria-label","Mostrar contraseña");});
   updatePass();
 }
-function openPass(){resetPassForm();$("profMain").hidden=true;$("passBox").hidden=false;$("p1").focus({preventScroll:true});}
+function openPass(){resetPassForm();$("pwUser").value=userMail;$("profMain").hidden=true;$("passBox").hidden=false;$("p1").focus({preventScroll:true});}
 function closePass(){resetPassForm();$("passBox").hidden=true;$("profMain").hidden=false;}
 $("p1").addEventListener("input",updatePass);$("p2").addEventListener("input",updatePass);
 async function changePassword(f,fd){

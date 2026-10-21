@@ -313,6 +313,8 @@ html.noscroll{overflow:hidden}
 label.check.esp{flex:1 1 100%;align-items:flex-start;font-size:.9rem}
 label.check.esp small{display:block}
 label.check.esp input{margin-top:2px}
+/* campo de correo invisible: el iPhone lo usa para actualizar la contraseña guardada de esta cuenta */
+.vh{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
 /* Nosotros */
 ul.list li.nos-li{grid-template-columns:1fr auto}
 ul.list li.nos-li .row-actions{grid-column:1/-1}
@@ -659,8 +661,8 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
     <div><h1>Cuantía</h1><p class="sub" id="authSub">Inicia sesión para ver tus ingresos y gastos.</p></div>
     <div class="msg" id="authMsg" hidden></div>
     <form id="authForm" novalidate>
-      <label class="f" id="emailRow">Correo<input id="authEmail" type="email" autocomplete="email" required></label>
-      <label class="f" id="passRow">Contraseña<input id="authPass" type="password" autocomplete="current-password" minlength="6" required></label>
+      <label class="f" id="emailRow">Correo<input id="authEmail" name="username" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" required></label>
+      <label class="f" id="passRow">Contraseña<input id="authPass" name="password" type="password" autocomplete="current-password" minlength="6" required></label>
       <button class="btn" id="authBtn">Iniciar sesión</button>
     </form>
     <button class="linkbtn" id="authSwitch" type="button">No tengo cuenta, quiero registrarme</button>
@@ -804,7 +806,8 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
           <h3>Cambiar contraseña</h3>
           <p class="sub">Elige una contraseña que no uses en otros sitios.</p>
         </div>
-        <form class="fields" id="passForm" data-form="pass" autocomplete="off">
+        <form class="fields" id="passForm" data-form="pass" autocomplete="on">
+          <input type="email" name="username" id="pwUser" class="vh" autocomplete="username" readonly tabindex="-1" aria-hidden="true">
           <label class="f">Contraseña nueva
             <span class="pw"><input name="p1" id="p1" type="password" autocomplete="new-password" required><button type="button" class="eye" data-act="eye" data-id="p1" aria-label="Mostrar contraseña" aria-pressed="false"></button></span>
           </label>
