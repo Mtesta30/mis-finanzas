@@ -1195,7 +1195,20 @@ let tt;function toast(msg){const t=document.getElementById("toast");t.textConten
 /* ---------- cuenta ---------- */
 let authMode="login";
 const $=id=>document.getElementById(id);
-function authMsg(text,ok){const m=$("authMsg");m.textContent=text||"";m.className="msg "+(ok?"ok":"err");m.hidden=!text;}
+function authMsg(text,ok){
+  const m=$("authMsg");m.textContent=text||"";m.className="msg "+(ok?"ok":"err");m.hidden=!text;
+  if(text&&!ok){const c=document.querySelector(".auth-card");c.classList.remove("shake");void c.offsetWidth;c.classList.add("shake");}
+}
+/* frase que cambia despacio bajo la tarjeta de inicio de sesión */
+(()=>{
+  const fr=["Tu plata, en orden","Cada peso con su lugar","Gasta con calma","Tu mes, claro"],el=document.getElementById("authTag");let i=0;
+  if(!el)return;
+  setInterval(()=>{
+    if($("authView").hidden)return;
+    el.classList.add("out");
+    setTimeout(()=>{i=(i+1)%fr.length;el.textContent=fr[i];el.classList.remove("out");},400);
+  },4500);
+})();
 function setAuthMode(mode){
   authMode=mode;authMsg("");
   const t={login:["Inicia sesión para ver tus ingresos y gastos.","Iniciar sesión","No tengo cuenta, quiero registrarme"],
@@ -1214,7 +1227,7 @@ $("authForm").addEventListener("submit",async e=>{
   const email=$("authEmail").value.trim(), pass=$("authPass").value;
   if(authMode!=="reset"&&!/^\S+@\S+\.\S+$/.test(email))return authMsg("Escribe un correo válido.");
   if(authMode!=="forgot"&&pass.length<6)return authMsg("La contraseña debe tener al menos 6 caracteres.");
-  const btn=$("authBtn");btn.disabled=true;authMsg("");
+  const btn=$("authBtn");btn.disabled=true;btn.classList.add("loading");authMsg("");
   try{
     if(authMode==="login"){
       const {error}=await sb.auth.signInWithPassword({email,password:pass});
@@ -1232,7 +1245,7 @@ $("authForm").addEventListener("submit",async e=>{
       if(error)authMsg("No se pudo cambiar la contraseña: "+error.message);
       else{toast("Contraseña actualizada");showApp();}
     }
-  }finally{btn.disabled=false;}
+  }finally{btn.disabled=false;btn.classList.remove("loading");}
 });
 
 function showAuth(){ $("topbar").hidden=true;$("tabs").hidden=true;$("appView").hidden=true;$("authView").hidden=false;document.documentElement.classList.remove("inapp"); }

@@ -515,7 +515,46 @@ html.editmode header.top,html.editmode body::before,html.editmode .tabbar,html.e
 @keyframes breathe{from{opacity:.035}to{opacity:.11}}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fi{opacity:.1}}
 :root[data-theme="dark"] .fi{opacity:.1}
-.auth-card{position:relative}
+/* Inicio de sesión: tarjeta de vidrio sobre el fondo de siluetas, campos en píldora */
+#authView .bgf{background:radial-gradient(60vmax 60vmax at 12% 8%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 60%),radial-gradient(55vmax 55vmax at 92% 92%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 60%)}
+#authView .fi{opacity:.2;filter:blur(2.5px)}
+.auth-col{width:100%;max-width:420px;display:grid;gap:18px;justify-items:center}
+.auth-card{position:relative;max-width:none;border-radius:28px;padding:30px 26px 24px;gap:14px;background:var(--glass);border:1px solid color-mix(in srgb,var(--fg) 10%,transparent);box-shadow:0 24px 60px -24px rgba(20,24,40,.35),inset 0 1px 0 rgba(255,255,255,.35)}
+@supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){.auth-card{-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%)}}
+.auth-card .brand{display:flex;align-items:center;gap:12px}
+.auth-card .logo{width:34px;height:34px;fill:var(--accent);flex:none}
+.auth-card h1{margin:0;font-size:2rem;letter-spacing:-.03em}
+.auth-card .sub{margin:-4px 0 4px}
+.auth-card label.f{gap:6px;flex:none}
+.auth-card .lab{padding-left:6px}
+.fw{display:flex;align-items:center;gap:10px;height:54px;padding:0 6px 0 16px;border-radius:999px;background:color-mix(in srgb,var(--surface) 60%,transparent);border:1px solid var(--line);color:var(--muted);transition:border-color 160ms ease,box-shadow 160ms ease,background-color 160ms ease,color 160ms ease}
+.fw:focus-within{border-color:var(--accent);background:var(--surface);color:var(--accent-fg);box-shadow:0 0 0 4px var(--accent-soft)}
+.fw .fi-ic{width:20px;height:20px;flex:none}
+.fw input{flex:1;height:100%;border:0;background:none;padding:0;border-radius:0;color:var(--fg);outline:0}
+.fw input:focus-visible{outline:0}
+.fw input:-webkit-autofill{-webkit-box-shadow:0 0 0 100px var(--surface) inset;-webkit-text-fill-color:var(--fg);caret-color:var(--fg)}
+.fw:not(:has(.eye)){padding-right:16px}
+.fw .eye{position:relative;right:auto;top:auto;transform:none;flex:none;width:42px;height:42px;border-radius:50%}
+.eye::after{content:"";position:absolute;width:22px;height:2px;border-radius:2px;background:currentColor;transform:rotate(-45deg) scaleX(0);transition:transform 180ms ease}
+.eye[aria-pressed="true"]::after{transform:rotate(-45deg) scaleX(1)}
+.auth-card .btn{height:54px;padding:0 18px;border-radius:999px;font-size:1rem;margin-top:4px;box-shadow:0 10px 24px -10px var(--accent),inset 0 1px 0 rgba(255,255,255,.25);position:relative}
+.auth-card .btn.loading{color:transparent;pointer-events:none}
+.auth-card .btn.loading::after{content:"";position:absolute;inset:0;margin:auto;width:20px;height:20px;border-radius:50%;border:2.5px solid var(--accent-ink);border-right-color:transparent;animation:spin .7s linear infinite}
+.auth-card .linkbtn{text-align:center;justify-self:center}
+.tagline{margin:0;color:var(--muted);font-size:.9rem;letter-spacing:.01em;transition:opacity 400ms ease,transform 400ms ease}
+.tagline.out{opacity:0;transform:translateY(6px)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes authIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+@keyframes barUp{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@media (prefers-reduced-motion:no-preference){
+  #authView:not([hidden]) .auth-card{animation:authIn 480ms var(--ease-out) both}
+  .auth-card.shake{animation:shake 380ms ease}
+  .auth-card .logo rect{transform-box:fill-box;transform-origin:bottom;animation:barUp 620ms var(--ease-out) both}
+  .auth-card .logo rect:nth-child(2){animation-delay:110ms}
+  .auth-card .logo rect:nth-child(3){animation-delay:220ms}
+}
+@media (prefers-reduced-motion:reduce){.auth-card .btn.loading::after{animation-duration:1.6s}}
 /* Perfil: sección Seguridad y pantalla de contraseña */
 .btn:disabled{opacity:.45;cursor:default}
 .sec{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
@@ -657,17 +696,26 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   <svg class="fi" style="--x:64%;--y:34%;--s:84px;--a:1.2;--r:7deg;--d:28s;--t:-17s;--sw:18px;--spin:-30deg"><use href="#s-wallet"/></svg>
 </div>
 <main class="auth">
+ <div class="auth-col">
   <div class="auth-card">
-    <div><h1>Cuantía</h1><p class="sub" id="authSub">Inicia sesión para ver tus ingresos y gastos.</p></div>
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><rect x="8" y="56" width="20" height="36" rx="6"/><rect x="40" y="32" width="20" height="60" rx="6"/><rect x="72" y="8" width="20" height="84" rx="6"/></svg>
+      <h1>Cuantía</h1>
+    </div>
+    <p class="sub" id="authSub">Inicia sesión para ver tus ingresos y gastos.</p>
     <div class="msg" id="authMsg" hidden></div>
     <form id="authForm" novalidate>
-      <label class="f" id="emailRow">Correo<input id="authEmail" name="username" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" required></label>
-      <label class="f" id="passRow">Contraseña<input id="authPass" name="password" type="password" autocomplete="current-password" minlength="6" required></label>
+      <label class="f" id="emailRow"><span class="lab">Correo</span>
+        <span class="fw"><svg class="fi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7.5l8.5 6 8.5-6"/></svg><input id="authEmail" name="username" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" required></span></label>
+      <label class="f" id="passRow"><span class="lab">Contraseña</span>
+        <span class="fw"><svg class="fi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="3"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg><input id="authPass" name="password" type="password" autocomplete="current-password" minlength="6" required><button type="button" class="eye" data-act="eye" data-id="authPass" aria-label="Mostrar contraseña" aria-pressed="false"></button></span></label>
       <button class="btn" id="authBtn">Iniciar sesión</button>
     </form>
     <button class="linkbtn" id="authSwitch" type="button">No tengo cuenta, quiero registrarme</button>
     <button class="linkbtn" id="authForgot" type="button">Olvidé mi contraseña</button>
   </div>
+  <p class="tagline" id="authTag" aria-hidden="true">Tu plata, en orden</p>
+ </div>
 </main></div>
 <div class="editbar" id="editBar" hidden role="region" aria-label="Editar el Resumen">
   <span>Arrastra los bloques para ordenarlos</span>
