@@ -1,9 +1,9 @@
-// Mis Finanzas - lógica de la app
+// Cuantía - lógica de la app
 const CATS=["Vivienda","Servicios","Comida","Transporte","Salud","Educación","Entretenimiento","Ropa","Suscripciones","Deudas","Ahorro","Otros"];
 const INCATS=["Salario extra","Freelance","Ventas","Bonificación","Intereses","Otros"];
 /* [id, nombre, nombre corto para la barra inferior]. En el celular solo las 4 primeras van a la vista; el resto, en "Más". */
-const TABS=[["resumen","Resumen"],["movimientos","Movimientos"],["presupuestos","Presupuestos"],["metas","Metas de ahorro","Metas"],["fijos","Pagos fijos"],["deudas","Deudas"],["historial","Historial"],["logros","Rachas y logros","Logros"]];
-const MORE=["fijos","deudas","historial","logros"];
+const TABS=[["resumen","Resumen"],["movimientos","Movimientos"],["presupuestos","Presupuestos"],["metas","Metas de ahorro","Metas"],["fijos","Pagos fijos"],["deudas","Deudas"],["historial","Historial"],["calendario","Calendario"],["logros","Rachas y logros","Logros"]];
+const MORE=["fijos","deudas","historial","calendario","logros"];
 const ICONS={
   resumen:'<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
   movimientos:'<path d="M7 4v14m0 0l-3-3m3 3l3-3M17 20V6m0 0l-3 3m3-3l3 3"/>',
@@ -32,7 +32,7 @@ const ICONS={
 };
 /* menú lateral de computadora: expandido o contraído (solo íconos); se recuerda en este dispositivo */
 try{if(localStorage.getItem("fin.rail")==="1")document.documentElement.classList.add("rail");}catch(e){}
-ICONS.logros=ICONS.flame;
+ICONS.logros=ICONS.flame;ICONS.calendario=ICONS.fijos;
 /* íconos y colores que se pueden elegir para cada meta de ahorro */
 const GOAL_ICONS=["metas","plane","home","car","book","phone","shield","gift","heart"];
 const GOAL_COLORS=["#2f5bea","#1e8e5a","#d6336c","#d97706","#7a5cfa","#0e8f9c"];
@@ -40,7 +40,7 @@ const svg=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 let sb=null, uid=null, ready=false, offline=false, pending=0;
 let cfg=defCfg(), months={};
 const today=new Date();
-let cur=mk(today), tab="resumen", movTipo="gasto", pendingRender=false;
+let cur=mk(today), tab="resumen", movTipo="gasto", movFecha="", pendingRender=false;
 try{const t=localStorage.getItem("fin.tab"); if(t&&TABS.some(x=>x[0]===t)) tab=t; if(localStorage.getItem("fin.mov")==="ingreso") movTipo="ingreso";}catch(e){}
 
 function defCfg(){return {salario:0,fijos:[],presupuestos:{},metas:[],deudas:[],perfil:{nombre:"",apodo:"",telefono:"",nacimiento:"",ciudad:"",foto:"",omitido:false},apariencia:{tema:"auto",paleta:"azul",acento:""},categorias:{gasto:[],ingreso:[],ocultas:[]},widgets:{orden:[]},logros:{vistos:[],libres:[],init:false}};}
@@ -158,7 +158,7 @@ function cleanMonth(m){
 function renderTabs(){
   const cur_=id=>id===tab?' aria-current="page"':"";
   const railOn=document.documentElement.classList.contains("rail");
-  document.getElementById("tabs").innerHTML=`<div class="side-brand" aria-hidden="true"><span class="sb-full">Mis Finanzas</span><span class="sb-mini">MF</span></div>`
+  document.getElementById("tabs").innerHTML=`<div class="side-brand" aria-hidden="true"><span class="sb-full">Cuantía</span><span class="sb-mini">C</span></div>`
     +TABS.map(([id,l,s])=>`<button class="tab" type="button" data-act="tab" data-id="${id}" data-grp="${MORE.includes(id)?"more":"main"}" title="${l}" aria-label="${l}"${cur_(id)}>${svg(id)}<span class="lb-long">${l}</span><span class="lb-short">${s||l}</span>${id==="resumen"&&pend.length?`<i class="badge" aria-hidden="true"></i>`:""}</button>`).join("")
     +`<button class="tab more-btn" type="button" data-act="more" aria-haspopup="dialog"${MORE.includes(tab)?' aria-current="page"':""}>${svg("mas")}<span class="lb-short">Más</span></button>`
     +`<button class="tab collapse-btn" type="button" data-act="rail" aria-pressed="${railOn}" aria-label="${railOn?"Expandir menú":"Contraer menú"}" title="${railOn?"Expandir menú":"Contraer menú"}">${svg("rail")}<span class="lb-long">Contraer menú</span></button>`;
@@ -175,7 +175,7 @@ function render(){
   const app=document.getElementById("app");
   if(offline){app.innerHTML=`<div class="notice">No se pudieron cargar tus datos. Revisa tu conexión a internet y vuelve a abrir la app.</div>`;return;}
   if(!ready){app.innerHTML=`<div class="empty">Cargando tus datos...</div>`;return;}
-  app.innerHTML=({resumen:vResumen,movimientos:vMov,fijos:vFijos,presupuestos:vPres,metas:vMetas,deudas:vDeudas,historial:vHist,logros:vLogros})[tab]();
+  app.innerHTML=({resumen:vResumen,movimientos:vMov,fijos:vFijos,presupuestos:vPres,metas:vMetas,deudas:vDeudas,historial:vHist,calendario:vCal,logros:vLogros})[tab]();
   if(editing)applyEditOrder();
 }
 
@@ -208,7 +208,7 @@ function presCats(sp){
 
 function movForm(){
   const cats=movTipo==="ingreso"?ingresoCats():gastoCats();
-  const def=cur===mk(today)?ymd(new Date()):cur+"-01";
+  const def=movFecha&&movFecha.startsWith(cur)?movFecha:(cur===mk(today)?ymd(new Date()):cur+"-01");
   return `<form class="row" data-form="mov">
     <label class="f">Monto (COP)<input id="mv-monto" name="monto" inputmode="numeric" placeholder="45000" required></label>
     <label class="f">Categoría<select id="mv-cat" name="cat">${cats.map(c=>`<option>${esc(c)}</option>`).join("")}</select></label>
@@ -491,6 +491,12 @@ const LOGROS=[
   ["ah10","Ahorrador","Ahorra el 10 % de tus ingresos en un mes","coin",c=>c.ah10],
   ["deuda","Libre de una deuda","Paga una deuda por completo","deudas",c=>c.deudaOk]
 ];
+/* presupuesto del día de un mes: ingresos menos pagos fijos, ahorro y salidas, repartido entre los días del mes (null si no hay ingresos) */
+function limiteDiaMes(k){
+  const tt=totals(k),mm=month(k),[y,mo]=k.split("-").map(Number),dim=new Date(y,mo,0).getDate();
+  const esp=sum((mm.movs||[]).filter(x=>x.tipo==="gasto"&&x.esp).map(x=>x.monto));
+  return tt.ingresos>0?Math.max(0,tt.ingresos-tt.fijos-tt.ahorro-esp)/dim:null;
+}
 /* Cada día suma solo a la racha desde tu primer movimiento. Un día la rompe únicamente si lo que gastaste ese día
    (sin contar salidas o imprevistos) supera el presupuesto del día: lo que te queda para gastos variables en el mes, repartido entre sus días. */
 function diaEstado(){
@@ -500,14 +506,7 @@ function diaEstado(){
     const n=dayNum(x.fecha);if(start===null||n<start)start=n;
     if(x.tipo==="gasto"&&!x.esp)gasto.set(n,(gasto.get(n)||0)+x.monto);
   }
-  const limite=k=>{
-    if(!lim.has(k)){
-      const tt=totals(k),mm=month(k),[y,mo]=k.split("-").map(Number),dim=new Date(y,mo,0).getDate();
-      const esp=sum((mm.movs||[]).filter(x=>x.tipo==="gasto"&&x.esp).map(x=>x.monto));
-      lim.set(k,tt.ingresos>0?Math.max(0,tt.ingresos-tt.fijos-tt.ahorro-esp)/dim:null);
-    }
-    return lim.get(k);
-  };
+  const limite=k=>{if(!lim.has(k))lim.set(k,limiteDiaMes(k));return lim.get(k);};
   /* sin ingresos registrados no hay presupuesto con qué comparar: el día cuenta */
   const ok=n=>{const g=gasto.get(n)||0;if(!g)return true;const L=limite(new Date(n*86400000).toISOString().slice(0,7));return L===null||g<=L+0.5;};
   return {t,start,total,ok};
@@ -679,7 +678,7 @@ async function shareStory(){
     g.globalAlpha=.78;g.font=font(600,40);g.fillText(lab,80,y);g.globalAlpha=1;
     fit(val,700,84,W-160);g.fillText(val,80,y+96);y+=190;
   });
-  g.globalAlpha=.8;g.font=font(600,40);g.fillText("Mis Finanzas",80,H-80);g.globalAlpha=1;
+  g.globalAlpha=.8;g.font=font(600,40);g.fillText("Cuantía",80,H-80);g.globalAlpha=1;
   const blob=await new Promise(res=>c.toBlob(res,"image/png"));
   if(!blob)return toast("No se pudo crear la imagen.");
   shareBlob("mi-mes-"+r.k+".png","image/png",blob);
@@ -689,6 +688,50 @@ function mesBanner(){
   const prev=shift(mk(today),-1),r=mesResumen(prev);if(!r.hay)return "";
   return `<section class="panel mesbanner"><div><h2>Tu ${esc(mName(prev))} en cifras</h2><p class="sub">Un repaso animado de cómo te fue. Lo puedes compartir como imagen.</p></div>
     <div><button type="button" class="btn" data-act="openStory" data-id="${prev}">Verlo ahora</button></div></section>`;
+}
+
+/* ---------- calendario del mes: gastos día por día, pagos fijos y qué tan cerca estás del presupuesto del día ---------- */
+const kfmt=n=>n>=1e6?(n/1e6).toFixed(n>=1e7?0:1).replace(".0","")+"M":n>=1e3?Math.round(n/1e3)+"k":String(Math.round(n));
+function diasDelMes(k){
+  const [y,mo]=k.split("-").map(Number),dim=new Date(y,mo,0).getDate(),m=month(k),por={};
+  (m.movs||[]).forEach(x=>{
+    if(!x.fecha||!x.fecha.startsWith(k))return;
+    const d=+x.fecha.slice(8,10),r=por[d]||(por[d]={g:0,gn:0,i:0});
+    if(x.tipo==="gasto"){r.g+=x.monto;if(!x.esp)r.gn+=x.monto;}else if(x.tipo==="ingreso")r.i+=x.monto;
+  });
+  const fj={};cfg.fijos.forEach(f=>{if(!f.dia)return;const d=Math.min(f.dia,dim);(fj[d]=fj[d]||[]).push(f);});
+  return {y,mo,dim,por,fj,m};
+}
+function vCal(){
+  const {y,mo,dim,por,fj}=diasDelMes(cur),L=limiteDiaMes(cur),off=(new Date(y,mo-1,1).getDay()+6)%7,hoy=ymd(new Date());
+  let sobre=0,total=0;
+  const celdas=[];
+  for(let i=0;i<off;i++)celdas.push(`<span class="cal-d void" aria-hidden="true"></span>`);
+  for(let d=1;d<=dim;d++){
+    const r=por[d]||{g:0,gn:0,i:0},f=cur+"-"+String(d).padStart(2,"0");
+    total+=r.g;
+    const st=r.gn>0?(L===null?"has":r.gn>L?"over":r.gn>L*.85?"near":"ok"):"";
+    if(st==="over")sobre++;
+    celdas.push(`<button type="button" class="cal-d ${st}${f===hoy?" hoy":""}" data-act="calDay" data-id="${f}" aria-label="Día ${d}${r.g?", gastaste "+money(r.g):""}"><b>${d}</b><span class="cal-amt">${r.g?kfmt(r.g):""}</span><span class="cal-mk">${r.i?`<i class="mk in"></i>`:""}${fj[d]?`<i class="mk fj"></i>`:""}</span></button>`);
+  }
+  return `<section class="panel"><div class="split"><div><h2>Calendario de ${esc(mName(cur))}</h2><p class="sub">Toca un día para ver sus movimientos y pagos.</p></div></div>
+    <div class="cal-sum"><div><span class="lbl">Gastos del mes</span><b class="num">${money(total)}</b></div><div><span class="lbl">Días sobre el presupuesto</span><b class="num">${sobre}</b></div></div>
+    <div class="cal-head" aria-hidden="true">${["L","M","M","J","V","S","D"].map(x=>`<span>${x}</span>`).join("")}</div>
+    <div class="cal-grid">${celdas.join("")}</div>
+    <div class="cal-legend"><span><i class="sw ok"></i>Dentro</span><span><i class="sw near"></i>Cerca</span><span><i class="sw over"></i>Te pasaste</span><span><i class="mk in"></i>Ingreso</span><span><i class="mk fj"></i>Pago fijo</span></div></section>`;
+}
+function openDay(f,opener){
+  if(!/^20\d\d-\d\d-\d\d$/.test(f||"")||!f.startsWith(cur))return;
+  const {y,mo,dim,por,fj,m}=diasDelMes(cur),d=+f.slice(8),L=limiteDiaMes(cur),r=por[d]||{g:0,gn:0,i:0};
+  const movs=(m.movs||[]).filter(x=>x.fecha===f),tit=new Date(y,mo-1,d).toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long"});
+  document.getElementById("dayTitle").textContent=capital(tit);
+  const st=L===null?"":r.gn>L?"bad":r.gn>L*.85?"warn":"good";
+  const pres=L===null?"":`<div class="budget"><div class="hd"><span>Presupuesto del día</span><span class="num">${money(r.gn)} <small class="sub">/ ${money(L)}</small></span></div><div class="bar ${st}"><i style="width:${Math.min(100,L>0?r.gn/L*100:(r.gn>0?100:0))}%"></i></div></div>`;
+  const lista=movs.length?`<ul class="list">${movs.map(x=>`<li><div class="li-main"><b>${esc(x.desc||x.cat)}</b><small>${esc(x.cat)}${x.tipo==="ahorro"?" · aporte a meta":""}${x.esp?" · salida o imprevisto":""}</small></div><span class="num ${x.tipo==="ingreso"?"in":"out"}">${x.tipo==="ingreso"?"+":"-"}${money(x.monto)}</span></li>`).join("")}</ul>`:`<div class="empty">Sin movimientos este día.</div>`;
+  const fijos=(fj[d]||[]).length?`<div><h3 class="cal-h">Pagos fijos de este día</h3><ul class="list">${fj[d].map(x=>{const p=!!m.pagados[x.id];return `<li><div class="li-main"><b>${esc(x.nombre)}</b><small>${esc(x.cat)}</small></div><span class="num">${money(x.monto)}</span><span class="chip ${p?"good":"warn"}">${p?"Pagado":"Pendiente"}</span></li>`;}).join("")}</ul></div>`:"";
+  document.getElementById("dayBody").innerHTML=`${pres}${lista}${fijos}
+    <div class="row-actions start"><button type="button" class="btn sm" data-act="goMovFecha" data-id="gasto:${f}">Registrar gasto este día</button><button type="button" class="btn ghost sm" data-act="goMovFecha" data-id="ingreso:${f}">Registrar ingreso</button></div>`;
+  openLayer(document.getElementById("daySheet"),opener);
 }
 
 /* ventana propia de rachas y logros */
@@ -845,7 +888,7 @@ document.addEventListener("click",e=>{
     case "tab":{
       if(!TABS.some(x=>x[0]===id))break;
       const from=TABS.findIndex(x=>x[0]===tab),to=TABS.findIndex(x=>x[0]===id),changed=id!==tab;
-      tab=id;try{localStorage.setItem("fin.tab",tab)}catch(_){ }closeLayer($("moreSheet"));
+      tab=id;movFecha="";try{localStorage.setItem("fin.tab",tab)}catch(_){ }closeLayer($("moreSheet"));
       if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
       render();window.scrollTo(0,0);
       if(changed)playTab(to>from?"go-r":"go-l");
@@ -889,6 +932,14 @@ document.addEventListener("click",e=>{
     case "yearNext":pickYear=Math.min(2099,pickYear+1);renderMonthPop();break;
     case "tipo":movTipo=id==="ingreso"?"ingreso":"gasto";try{localStorage.setItem("fin.mov",movTipo)}catch(_){ }
       if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render();break;
+    case "goMovFecha":{
+      const [tp,fe]=String(id||"").split(":");
+      movTipo=tp==="ingreso"?"ingreso":"gasto";movFecha=/^20\d\d-\d\d-\d\d$/.test(fe||"")?fe:"";
+      closeLayer($("daySheet"));tab="movimientos";
+      try{localStorage.setItem("fin.mov",movTipo);localStorage.setItem("fin.tab",tab)}catch(_){ }
+      render();window.scrollTo(0,0);playTab("go-r");
+      setTimeout(()=>{const i=document.getElementById("mv-monto");if(i)i.focus({preventScroll:true});},60);break;}
+    case "calDay":openDay(id,b);break;
     case "goMov":{
       movTipo=id==="ingreso"?"ingreso":"gasto";tab="movimientos";
       try{localStorage.setItem("fin.mov",movTipo);localStorage.setItem("fin.tab",tab)}catch(_){ }
@@ -934,7 +985,7 @@ document.addEventListener("submit",e=>{
     case "salarioMes":{const v=num(fd.salario);if(v<0)return toast("Escribe un salario válido.");const m=month(cur);months[cur]={...months[cur],movs:m.movs,pagados:m.pagados,salarioMes:v};saveMonth(cur);toast("Salario de "+mName(cur)+" guardado");break;}
     case "mov":{const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");const fecha=fd.fecha||cur+"-01";const k=fecha.slice(0,7);
       const mv={id:uidv(),tipo:movTipo,monto:v,cat:fd.cat,desc:(fd.desc||"").trim(),fecha};if(movTipo==="gasto"&&fd.esp==="1")mv.esp=true;
-      addMov(k,mv);if(k!==cur)cur=k;
+      addMov(k,mv);if(k!==cur)cur=k;movFecha="";
       const rd=movTipo==="gasto"?aplicarRedondeo(v,mv.desc,fecha):null;
       toast((movTipo==="gasto"?"Gasto registrado":"Ingreso registrado")+(rd?` · ${money(rd.diff)} al ahorro de ${rd.nombre}`:""));break;}
     case "fijo":{const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");cfg.fijos=[...cfg.fijos,{id:uidv(),nombre:fd.nombre.trim(),monto:v,cat:fd.cat,dia:parseInt(fd.dia)||null}];saveCfg();toast("Pago fijo agregado");break;}
@@ -1350,11 +1401,11 @@ function exportCsv(){
     });
   });
   if(!rows.length)return toast("No hay movimientos para exportar.");
-  saveFile("mis-finanzas-"+r+".csv","text/csv","﻿"+["Fecha;Tipo;Categoría;Descripción;Monto (COP)",...rows].join("\r\n")+"\r\n");
+  saveFile("cuantia-"+r+".csv","text/csv","﻿"+["Fecha;Tipo;Categoría;Descripción;Monto (COP)",...rows].join("\r\n")+"\r\n");
 }
 function exportJson(){
-  const data={app:"mis-finanzas",version:1,exportado:new Date().toISOString(),config:cfg,meses:months};
-  saveFile("mis-finanzas-respaldo-"+new Date().toISOString().slice(0,10)+".json","application/json",JSON.stringify(data,null,2));
+  const data={app:"cuantia",version:1,exportado:new Date().toISOString(),config:cfg,meses:months};
+  saveFile("cuantia-respaldo-"+new Date().toISOString().slice(0,10)+".json","application/json",JSON.stringify(data,null,2));
 }
 
 /* pantalla "Cambiar contraseña" dentro del perfil: ojito, medidor de fortaleza y requisitos que se marcan */
@@ -1436,7 +1487,7 @@ async function autoGen(){
 }
 async function autoTest(){
   if(!autoToken)return;
-  const {data,error}=await sb.rpc("registrar_pago_atajo",{p_token:autoToken,p_monto:"12.345",p_comercio:"Prueba de Mis Finanzas",p_tarjeta:"Apple Pay"});
+  const {data,error}=await sb.rpc("registrar_pago_atajo",{p_token:autoToken,p_monto:"12.345",p_comercio:"Prueba de Cuantía",p_tarjeta:"Apple Pay"});
   if(error||!data||!data.ok)return toast("La prueba falló. Revisa que ejecutaste el script de Supabase.");
   toast("Pago de prueba enviado. Míralo en el Resumen.");loadPending();
 }
@@ -1451,6 +1502,7 @@ function openMore(opener){
   const m=month(cur),pend=cfg.fijos.filter(f=>!m.pagados[f.id]).length,saldo=sum(cfg.deudas.map(d=>d.saldo));
   const rows=[["fijos","Pagos fijos",cfg.fijos.length?(pend?pend+(pend===1?" pendiente":" pendientes")+" este mes":"Todos pagados"):"Sin pagos fijos"],
     ["deudas","Deudas",cfg.deudas.length?"Saldo total "+money(saldo):"Sin deudas"],["historial","Historial","Últimos 6 meses y exportar"],
+    ["calendario","Calendario","Gastos y pagos día por día"],
     ["logros","Rachas y logros",rachaInfo().streak+(rachaInfo().streak===1?" día":" días")+" de racha"]];
   $("moreList").innerHTML=rows.map(([id,n,s])=>`<button type="button" class="morerow" data-act="tab" data-id="${id}">${svg(id)}<span class="nm">${n}<small>${esc(s)}</small></span><span class="chev" aria-hidden="true">&rsaquo;</span></button>`).join("");
   openLayer($("moreSheet"),opener);

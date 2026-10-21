@@ -1,4 +1,6 @@
-# Mis Finanzas — contexto para Claude Code
+# Cuantía (antes "Mis Finanzas") — contexto para Claude Code
+
+El nombre visible de la app es **Cuantía**. El repositorio, la carpeta y los archivos internos conservan "mis-finanzas".
 
 App web personal para controlar ingresos, gastos, pagos fijos, presupuestos por categoría, metas de ahorro, deudas e historial mensual. La usan dos personas (Mario y su novia), cada una con su cuenta. Todo el texto de la interfaz está en español de Colombia, moneda COP. Sin emojis.
 

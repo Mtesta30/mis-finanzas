@@ -12,9 +12,9 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Mis Finanzas">
+<meta name="apple-mobile-web-app-title" content="Cuantía">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Mis Finanzas</title>
+<title>Cuantía</title>
 <style>
 /* Layout: columna de trabajo de 980px; barra de pestañas fija arriba, cifras clave primero, detalle debajo */
 :root{
@@ -313,6 +313,34 @@ html.noscroll{overflow:hidden}
 label.check.esp{flex:1 1 100%;align-items:flex-start;font-size:.9rem}
 label.check.esp small{display:block}
 label.check.esp input{margin-top:2px}
+/* Calendario del mes */
+.cal-sum{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cal-sum>div{display:grid;gap:2px;padding:10px 12px;border-radius:14px;background:var(--sunk)}
+.cal-sum .lbl{font-size:.74rem;font-weight:600;color:var(--muted)}
+.cal-sum b{font-size:1.05rem;letter-spacing:-.02em}
+.cal-head,.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cal-head span{text-align:center;font:600 .72rem var(--f-body);color:var(--muted)}
+.cal-d{position:relative;display:grid;grid-template-rows:auto 1fr auto;justify-items:center;gap:1px;min-height:60px;padding:6px 1px 5px;border:1.5px solid transparent;border-radius:12px;background:var(--sunk);color:var(--fg);cursor:pointer;font:inherit;transition:transform 120ms var(--ease-out)}
+.cal-d:active{transform:scale(.95)}
+.cal-d b{font:600 .85rem var(--f-num);letter-spacing:-.02em}
+.cal-amt{font-size:.64rem;color:var(--muted);font-family:var(--f-num);letter-spacing:-.02em;align-self:center}
+.cal-d.ok,.cal-d.has{background:var(--accent-soft)}
+.cal-d.near{background:var(--warn-soft)}
+.cal-d.over{background:var(--bad-soft)}
+.cal-d.over .cal-amt{color:var(--bad)}
+.cal-d.hoy{border-color:var(--accent-fg)}
+.cal-d.void{visibility:hidden;pointer-events:none}
+.cal-mk{display:flex;gap:3px;height:6px;align-items:center}
+.mk{display:inline-block;width:6px;height:6px;border-radius:50%}
+.mk.in{background:var(--good)}
+.mk.fj{background:var(--accent-fg)}
+.cal-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.76rem;color:var(--muted)}
+.cal-legend span{display:inline-flex;align-items:center;gap:6px}
+.cal-legend .sw{display:inline-block;width:12px;height:12px;border-radius:4px}
+.cal-legend .sw.ok{background:var(--accent-soft);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-fg) 40%,transparent)}
+.cal-legend .sw.near{background:var(--warn-soft);box-shadow:inset 0 0 0 1px var(--warn)}
+.cal-legend .sw.over{background:var(--bad-soft);box-shadow:inset 0 0 0 1px var(--bad)}
+.cal-h{font:600 .78rem var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 4px}
 /* Tu mes en cifras */
 .story{position:fixed;inset:0;z-index:50;display:grid;grid-template-rows:auto 1fr auto;background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,0) 60%),var(--accent);color:var(--accent-ink);padding:max(14px,env(safe-area-inset-top)) 22px max(20px,env(safe-area-inset-bottom));overflow:hidden}
 .story-bars{display:flex;gap:5px;padding-top:6px}
@@ -543,7 +571,7 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
   #app.go-r,#app.go-l{animation:tabFade 150ms ease}
   /* Con "reducir movimiento" las siluetas no se desplazan: solo respiran (cambian de tono muy despacio) */
   .fi{top:var(--y);transform:rotate(var(--r));will-change:auto;animation:breathe calc(var(--d) * .6) ease-in-out var(--t) infinite alternate}
-  .modeseg button:active,.qbtn:active,.bdg:active{transform:none}
+  .modeseg button:active,.qbtn:active,.bdg:active,.cal-d:active{transform:none}
   .ring.big .r-fg.mfg{animation:none}
   .story-slide>*{animation:none}
   .story-bars i.on::after{animation:none;transform:scaleX(1)}
@@ -621,7 +649,7 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
 </div>
 <main class="auth">
   <div class="auth-card">
-    <div><h1>Mis Finanzas</h1><p class="sub" id="authSub">Inicia sesión para ver tus ingresos y gastos.</p></div>
+    <div><h1>Cuantía</h1><p class="sub" id="authSub">Inicia sesión para ver tus ingresos y gastos.</p></div>
     <div class="msg" id="authMsg" hidden></div>
     <form id="authForm" novalidate>
       <label class="f" id="emailRow">Correo<input id="authEmail" type="email" autocomplete="email" required></label>
@@ -796,6 +824,19 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
         </div>
       </div>
     </div>
+  </section>
+</div>
+
+<!-- Un día del calendario -->
+<div class="layer" id="daySheet" hidden>
+  <div class="backdrop" data-act="closeLayer" data-id="daySheet"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="dayTitle">
+    <div class="sheet-head">
+      <span class="grab" aria-hidden="true"></span>
+      <h2 id="dayTitle">Día</h2>
+      <button type="button" class="icon" data-act="closeLayer" data-id="daySheet" data-autofocus>Cerrar</button>
+    </div>
+    <div class="sheet-body"><div class="stack" id="dayBody"></div></div>
   </section>
 </div>
 

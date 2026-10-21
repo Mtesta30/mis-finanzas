@@ -1,6 +1,6 @@
 {
-  "name": "Mis Finanzas",
-  "short_name": "Finanzas",
+  "name": "Cuantía",
+  "short_name": "Cuantía",
   "description": "Control personal de ingresos, gastos, pagos fijos, presupuestos, metas y deudas.",
   "lang": "es-CO",
   "start_url": "/",
