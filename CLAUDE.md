@@ -33,6 +33,8 @@ Sesión: el cliente de Supabase guarda la sesión en `sessionStorage` (se pierde
 
 Pagos de Apple Pay (`supabase/apple-pay.sql`, se ejecuta aparte): tablas `atajo_tokens` (huella SHA-256 de la clave de cada persona) y `pagos_pendientes` (bandeja), más la función `registrar_pago_atajo` que llama el Atajo del iPhone con la publishable key. Nada pasa a gasto sin confirmar en la app.
 
+Espacio "Nosotros" de pareja (`supabase/nosotros.sql`, se ejecuta aparte): tablas `espacios`, `espacio_miembros` (máx. 2 personas, un espacio por persona), `espacio_gastos` (con `pct_pagador`: parte de quien pagó), `espacio_liquidaciones`, `espacio_metas` y `espacio_aportes`; todo con RLS por pertenencia al espacio. Se crea y se une con las funciones `crear_espacio`, `unirse_espacio` (código de 8 caracteres) y `salir_espacio`. Los datos personales (`finanzas_docs`) no se comparten.
+
 `app.js` valida todo lo que lee de la base (`cleanCfg`, `cleanMonth`) y escapa todo texto de usuario con `esc()`. Mantener eso en cualquier markup nuevo.
 
 ## Restricciones al rediseñar

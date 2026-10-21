@@ -2,8 +2,8 @@
 const CATS=["Vivienda","Servicios","Comida","Transporte","Salud","Educación","Entretenimiento","Ropa","Suscripciones","Deudas","Ahorro","Otros"];
 const INCATS=["Salario extra","Freelance","Ventas","Bonificación","Intereses","Otros"];
 /* [id, nombre, nombre corto para la barra inferior]. En el celular solo las 4 primeras van a la vista; el resto, en "Más". */
-const TABS=[["resumen","Resumen"],["movimientos","Movimientos"],["presupuestos","Presupuestos"],["metas","Metas de ahorro","Metas"],["fijos","Pagos fijos"],["deudas","Deudas"],["historial","Historial"],["calendario","Calendario"],["logros","Rachas y logros","Logros"]];
-const MORE=["fijos","deudas","historial","calendario","logros"];
+const TABS=[["resumen","Resumen"],["movimientos","Movimientos"],["presupuestos","Presupuestos"],["metas","Metas de ahorro","Metas"],["fijos","Pagos fijos"],["deudas","Deudas"],["historial","Historial"],["nosotros","Nosotros"],["calendario","Calendario"],["logros","Rachas y logros","Logros"]];
+const MORE=["fijos","deudas","historial","nosotros","calendario","logros"];
 const ICONS={
   resumen:'<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
   movimientos:'<path d="M7 4v14m0 0l-3-3m3 3l3-3M17 20V6m0 0l-3 3m3-3l3 3"/>',
@@ -100,7 +100,7 @@ async function loadAll(){
   if(error){offline=true;render();return;}
   const c=defCfg(), ms={};
   (data||[]).forEach(r=>{if(r.doc_id==="config")Object.assign(c,cleanCfg(r.data||{}));else if(/^m-\d{4}-\d{2}$/.test(r.doc_id))ms[r.doc_id.slice(2)]=cleanMonth(r.data||{});});
-  cfg=c;months=ms;offline=false;ready=true;applyLook();render();maybeWelcome();loadPending();checkLogros();
+  cfg=c;months=ms;offline=false;ready=true;applyLook();render();maybeWelcome();loadPending();checkLogros();loadEspacio();
 }
 
 /* ---------- validación de datos leídos ---------- */
@@ -175,7 +175,7 @@ function render(){
   const app=document.getElementById("app");
   if(offline){app.innerHTML=`<div class="notice">No se pudieron cargar tus datos. Revisa tu conexión a internet y vuelve a abrir la app.</div>`;return;}
   if(!ready){app.innerHTML=`<div class="empty">Cargando tus datos...</div>`;return;}
-  app.innerHTML=({resumen:vResumen,movimientos:vMov,fijos:vFijos,presupuestos:vPres,metas:vMetas,deudas:vDeudas,historial:vHist,calendario:vCal,logros:vLogros})[tab]();
+  app.innerHTML=({resumen:vResumen,movimientos:vMov,fijos:vFijos,presupuestos:vPres,metas:vMetas,deudas:vDeudas,historial:vHist,nosotros:vNos,calendario:vCal,logros:vLogros})[tab]();
   if(editing)applyEditOrder();
 }
 
@@ -690,6 +690,175 @@ function mesBanner(){
     <div><button type="button" class="btn" data-act="openStory" data-id="${prev}">Verlo ahora</button></div></section>`;
 }
 
+/* ---------- Nosotros: espacio compartido de pareja (gastos compartidos, saldo y metas) ---------- */
+ICONS.nosotros='<circle cx="9" cy="8" r="3.500"/><path d="M2.500 20c0-3.600 2.900-6 6.500-6s6.500 2.400 6.500 6"/><circle cx="17" cy="9" r="2.800"/><path d="M16.500 14.200c3 .2 5 2.200 5 5.300"/>';
+let sp=null,spEstado="idle";
+const isId=v=>/^[0-9a-f-]{36}$/i.test(String(v??""));
+const fechaOk=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v??""))?String(v):"";
+const spOtro=()=>sp&&sp.miembros.find(m=>m.user_id!==uid)||null;
+const spNom=u=>u===uid?"Tú":((sp&&sp.miembros.find(m=>m.user_id===u))||{}).alias||"tu pareja";
+const spCod=c=>c.slice(0,4)+"-"+c.slice(4);
+async function loadEspacio(){
+  if(!sb||!uid)return;const who=uid;
+  if(spEstado==="idle")spEstado="cargando";
+  const mi=await sb.from("espacio_miembros").select("espacio_id,user_id,alias");
+  if(who!==uid)return;
+  if(mi.error){spEstado="sin_tablas";sp=null;render();return;}
+  const rows=arr(mi.data).filter(r=>isId(r.espacio_id)&&isId(r.user_id)),yo=rows.find(r=>r.user_id===uid);
+  if(!yo){spEstado="ok";sp=null;render();return;}
+  const eid=yo.espacio_id,q=(t,c)=>sb.from(t).select(c).eq("espacio_id",eid);
+  const [e,g,l,m,a]=await Promise.all([
+    sb.from("espacios").select("id,nombre,codigo").eq("id",eid).limit(1),
+    q("espacio_gastos","id,pagado_por,monto,descripcion,categoria,fecha,pct_pagador").order("fecha",{ascending:false}).limit(1000),
+    q("espacio_liquidaciones","id,de,a,monto,fecha").order("fecha",{ascending:false}).limit(500),
+    q("espacio_metas","id,nombre,objetivo,icono,color").order("creado",{ascending:true}),
+    q("espacio_aportes","id,meta_id,aportado_por,monto,fecha").order("fecha",{ascending:false})
+  ]);
+  if(who!==uid)return;
+  const er=arr(e.data)[0];
+  if(e.error||g.error||l.error||m.error||a.error||!er){spEstado="error";render();return;}
+  sp={id:eid,nombre:str(er.nombre,40)||"Nosotros",codigo:String(er.codigo||"").replace(/[^A-Z2-9]/g,"").slice(0,8),
+    miembros:rows.filter(r=>r.espacio_id===eid).map(r=>({user_id:r.user_id,alias:str(r.alias,30)})),
+    gastos:arr(g.data).filter(x=>isId(x.id)&&isId(x.pagado_por)).map(x=>({id:x.id,pagado_por:x.pagado_por,monto:n0(x.monto),desc:str(x.descripcion,120),cat:str(x.categoria,40),fecha:fechaOk(x.fecha),pct:Math.min(100,Math.max(0,n0(x.pct_pagador)))})),
+    liq:arr(l.data).filter(x=>isId(x.id)&&isId(x.de)&&isId(x.a)).map(x=>({id:x.id,de:x.de,a:x.a,monto:n0(x.monto),fecha:fechaOk(x.fecha)})),
+    metas:arr(m.data).filter(x=>isId(x.id)).map(x=>({id:x.id,nombre:str(x.nombre,60),objetivo:n0(x.objetivo),icono:GOAL_ICONS.includes(x.icono)?x.icono:"metas",color:GOAL_COLORS.includes(x.color)?x.color:""})),
+    aportes:arr(a.data).filter(x=>isId(x.id)&&isId(x.meta_id)&&isId(x.aportado_por)).map(x=>({id:x.id,meta:x.meta_id,por:x.aportado_por,monto:n0(x.monto),fecha:fechaOk(x.fecha)}))};
+  spEstado="ok";render();
+}
+/* saldo desde tu punto de vista: positivo = tu pareja te debe; negativo = tú le debes */
+function spSaldo(){
+  let n=0;
+  sp.gastos.forEach(g=>{const deb=g.monto*(100-g.pct)/100;if(g.pagado_por===uid)n+=deb;else n-=deb;});
+  sp.liq.forEach(l=>{if(l.de===uid)n+=l.monto;else if(l.a===uid)n-=l.monto;});
+  return n;
+}
+function spSaldoTxt(){
+  const s=Math.round(spSaldo()),otro=spOtro();
+  if(!otro)return "Cuando tu pareja se una, aquí verás quién le debe a quién.";
+  const nm=otro.alias||"Tu pareja";
+  return s===0?"Están a mano.":s>0?`${nm} te debe ${money(s)}.`:`Le debes ${money(-s)} a ${nm}.`;
+}
+function vNos(){
+  if(spEstado==="sin_tablas")return `<section class="panel"><div class="notice">Falta un paso en Supabase: ejecuta una vez el archivo <b>supabase/nosotros.sql</b> en el SQL Editor y vuelve a abrir esta pantalla.</div></section>`;
+  if(spEstado==="error")return `<section class="panel"><div class="notice">No se pudo cargar el espacio compartido. Revisa tu conexión e inténtalo de nuevo.</div><div><button type="button" class="btn ghost sm" data-act="spRecargar">Reintentar</button></div></section>`;
+  if(spEstado!=="ok"&&!sp)return `<div class="empty">Cargando tu espacio...</div>`;
+  if(!sp){
+    const yo=esc(firstName());
+    return `<section class="panel"><div><h2>Nosotros</h2><p class="sub">Un espacio para los dos: gastos compartidos, quién le debe a quién y metas de ahorro en pareja. Tus finanzas personales siguen siendo solo tuyas.</p></div></section>
+    <div class="grid2">
+    <section class="panel"><div><h2>Crear nuestro espacio</h2><p class="sub">Te damos un código para que tu pareja se una.</p></div>
+      <form class="fields" data-form="spCrear"><label class="f">Nombre del espacio<input name="nombre" maxlength="40" value="Nosotros"></label><label class="f">Cómo te llamamos<input name="alias" maxlength="30" value="${yo}"></label><button class="btn">Crear espacio</button></form></section>
+    <section class="panel"><div><h2>Tengo un código</h2><p class="sub">Si tu pareja ya creó el espacio, escribe su código.</p></div>
+      <form class="fields" data-form="spUnir"><label class="f">Código<input name="codigo" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="ABCD-EFGH" required></label><label class="f">Cómo te llamamos<input name="alias" maxlength="30" value="${yo}"></label><button class="btn ghost">Unirme</button></form></section>
+    </div>`;
+  }
+  const otro=spOtro(),saldo=Math.round(spSaldo()),nm=otro?esc(otro.alias||"Tu pareja"):"";
+  const delMes=sp.gastos.filter(g=>g.fecha.startsWith(cur)),liqMes=sp.liq.filter(l=>l.fecha.startsWith(cur));
+  const mov=[...delMes.map(g=>({t:"g",f:g.fecha,x:g})),...liqMes.map(l=>({t:"l",f:l.fecha,x:l}))].sort((a,b)=>b.f.localeCompare(a.f));
+  const totalMes=sum(delMes.map(g=>g.monto));
+  const fila=e=>e.t==="g"
+    ?`<li class="nos-li"><div class="li-main"><b>${esc(e.x.desc||e.x.cat)}</b><small>${esc(e.x.cat)} · ${esc(e.x.fecha)} · pagó ${esc(spNom(e.x.pagado_por))} · ${e.x.pct===50?"mitad y mitad":e.x.pct===0?"lo debe la otra persona":"parte de quien pagó: "+Math.round(e.x.pct)+" %"}</small></div><span class="num">${money(e.x.monto)}</span><span class="row-actions"><button type="button" class="icon" data-act="spEditGasto" data-id="${e.x.id}">Editar</button><button type="button" class="icon" data-act="spDelGasto" data-id="${e.x.id}">Borrar</button></span></li>`
+    :`<li class="nos-li"><div class="li-main"><b>Pago entre ustedes</b><small>${esc(e.x.fecha)} · ${esc(spNom(e.x.de))} le pagó a ${esc(spNom(e.x.a))}</small></div><span class="num">${money(e.x.monto)}</span><span class="row-actions"><button type="button" class="icon" data-act="spDelLiq" data-id="${e.x.id}">Borrar</button></span></li>`;
+  const C=2*Math.PI*42;
+  const metas=sp.metas.map(m=>{
+    const ap=sp.aportes.filter(a=>a.meta===m.id),tot=sum(ap.map(a=>a.monto)),p=m.objetivo?Math.min(100,tot/m.objetivo*100):0;
+    const porPersona=sp.miembros.map(mi=>`${esc(spNom(mi.user_id))}: ${money(sum(ap.filter(a=>a.por===mi.user_id).map(a=>a.monto)))}`).join(" · ");
+    return `<section class="panel meta" style="${m.color?`--mc:${m.color};`:""}">
+      <div class="meta-top"><div class="ringbox"><svg class="ring big" viewBox="0 0 100 100" aria-hidden="true"><circle class="r-bg" cx="50" cy="50" r="42"/><circle class="r-fg mfg" cx="50" cy="50" r="42" stroke-dasharray="${(p/100*C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 50 50)"/></svg><span class="meta-ic">${svg(m.icono)}</span></div>
+      <div class="meta-info"><div class="split"><h2>${esc(m.nombre)}</h2>${p>=100?`<span class="chip good">Cumplida</span>`:`<span class="chip">${Math.round(p)}%</span>`}</div><span class="num meta-amt">${money(tot)}</span><span class="sub">de ${money(m.objetivo)}</span></div></div>
+      <p class="sub">${porPersona}</p>
+      <form class="row" data-form="spAporte" data-id="${m.id}"><label class="f">Aporte (COP)<input name="monto" inputmode="numeric" placeholder="100000" required></label><button class="btn ghost">Aportar</button><button type="button" class="icon" data-act="spDelMeta" data-id="${m.id}">Eliminar</button></form>
+      ${ap.length?`<details class="mp"><summary>Aportes (${ap.length})</summary><ul class="list">${ap.slice(0,20).map(a=>`<li><div class="li-main"><b>${esc(spNom(a.por))}</b><small>${esc(a.fecha)}</small></div><span class="num">${money(a.monto)}</span><button type="button" class="icon" data-act="spDelAporte" data-id="${a.id}">Borrar</button></li>`).join("")}</ul></details>`:""}</section>`;
+  }).join("");
+  return `<section class="panel"><div class="split"><div><h2>${esc(sp.nombre)}</h2><p class="sub">${sp.miembros.map(m=>esc(m.user_id===uid?(m.alias||"Tú")+" (tú)":(m.alias||"Tu pareja"))).join(" y ")}</p></div><button type="button" class="icon" data-act="spSalir">Salir</button></div>
+    ${otro?"":`<div class="keybox"><code>${esc(spCod(sp.codigo))}</code><button type="button" class="icon" data-act="spCopiar">Copiar</button></div><p class="sub">Compártele este código a tu pareja: lo escribe en Nosotros, "Tengo un código". Mientras tanto ya puedes registrar gastos.</p>`}</section>
+  <section class="kpi hero nos-saldo"><span class="lbl">Saldo entre ustedes</span><span class="val">${otro?moneyBig(Math.abs(saldo)):"—"}</span><span class="note">${esc(spSaldoTxt())}</span>
+    <div class="row-actions start nos-acts"><button type="button" class="btn sm" data-act="spNuevoGasto">Registrar gasto compartido</button>${otro&&saldo!==0?`<button type="button" class="btn ghost sm" data-act="spSaldar">Saldar cuentas</button>`:""}</div></section>
+  <section class="panel"><div class="split"><div><h2>Gastos de ${esc(mName(cur))}</h2><p class="sub">Total compartido del mes: ${money(totalMes)}</p></div></div>
+    ${mov.length?`<ul class="list">${mov.map(fila).join("")}</ul>`:`<div class="empty">Aún no hay gastos compartidos en este mes.</div>`}</section>
+  <section class="panel"><div><h2>Metas compartidas</h2><p class="sub">Ahorros de los dos: ambos aportan y ven el progreso.</p></div>
+    <form class="row" data-form="spMeta"><label class="f wide">Meta<input name="nombre" maxlength="60" placeholder="Viaje, casa, matrimonio..." required></label><label class="f">Objetivo (COP)<input name="objetivo" inputmode="numeric" placeholder="5000000" required></label><button class="btn">Crear meta</button></form></section>
+  ${metas?`<div class="grid2">${metas}</div>`:""}`;
+}
+function openSpGasto(id,opener){
+  if(!sp)return;
+  const g=id?sp.gastos.find(x=>x.id===id):null;if(id&&!g)return;
+  const otro=spOtro(),cats=gastoCats();if(g&&!cats.includes(g.cat))cats.push(g.cat);
+  const rep=g?(g.pct===50?"50":g.pct===0?"todo":"otro"):"";
+  document.getElementById("spTitle").textContent=g?"Editar gasto compartido":"Gasto compartido";
+  document.getElementById("spBody").innerHTML=`<form class="fields" data-form="spGasto" data-id="${g?g.id:""}">
+    <label class="f">Monto (COP)<input name="monto" inputmode="numeric" value="${g?esc(Math.round(g.monto)):""}" placeholder="120000" required></label>
+    <label class="f">Descripción<input name="desc" maxlength="120" value="${g?esc(g.desc):""}" placeholder="Mercado, cena, arriendo..."></label>
+    <label class="f">Categoría<select name="cat">${cats.map(c=>`<option${g&&g.cat===c?" selected":""}>${esc(c)}</option>`).join("")}</select></label>
+    <label class="f">Fecha<input name="fecha" type="date" value="${esc(g?g.fecha:ymd(new Date()))}"></label>
+    <label class="f">¿Quién pagó?<select name="pagador"><option value="yo"${!g||g.pagado_por===uid?" selected":""}>Yo</option>${otro?`<option value="otro"${g&&g.pagado_por!==uid?" selected":""}>${esc(otro.alias||"Mi pareja")}</option>`:""}</select></label>
+    <label class="f">¿Cómo se reparte?<select name="reparto" id="spReparto" required><option value=""${rep?"":" selected"} disabled>Elige una opción</option><option value="50"${rep==="50"?" selected":""}>Mitad y mitad</option><option value="todo"${rep==="todo"?" selected":""}>Todo lo debe la otra persona</option><option value="otro"${rep==="otro"?" selected":""}>Otro porcentaje</option></select></label>
+    <label class="f" id="spPctRow"${rep==="otro"?"":" hidden"}>Parte de quien pagó (%)<input name="pct" inputmode="numeric" value="${g&&rep==="otro"?esc(Math.round(g.pct*100)/100):""}" placeholder="70"></label>
+    ${g?"":`<label class="check esp"><input type="checkbox" name="mio" value="1" checked><span>Anotar mi parte en mis gastos personales</span></label>`}
+    <button class="btn">${g?"Guardar cambios":"Agregar gasto compartido"}</button></form>`;
+  openLayer(document.getElementById("spSheet"),opener);
+}
+document.addEventListener("change",e=>{if(e.target&&e.target.id==="spReparto")document.getElementById("spPctRow").hidden=e.target.value!=="otro";});
+function openSpLiq(opener){
+  const otro=spOtro();if(!sp||!otro)return toast("Cuando tu pareja se una podrán saldar cuentas.");
+  const s=Math.round(spSaldo()),nm=esc(otro.alias||"mi pareja");
+  document.getElementById("spTitle").textContent="Pago entre ustedes";
+  document.getElementById("spBody").innerHTML=`<form class="fields" data-form="spLiq">
+    <label class="f">¿Quién pagó?<select name="dir"><option value="yo"${s<0?" selected":""}>Yo le pagué a ${nm}</option><option value="otro"${s>=0?" selected":""}>${nm} me pagó a mí</option></select></label>
+    <label class="f">Monto (COP)<input name="monto" inputmode="numeric" value="${s?Math.abs(s):""}" required></label>
+    <label class="f">Fecha<input name="fecha" type="date" value="${ymd(new Date())}"></label>
+    <button class="btn">Registrar pago</button></form>`;
+  openLayer(document.getElementById("spSheet"),opener);
+}
+async function spOp(promesa,okMsg){
+  const {error}=await promesa;
+  if(error){toast("No se pudo guardar. Inténtalo de nuevo.");return false;}
+  if(okMsg)toast(okMsg);await loadEspacio();return true;
+}
+async function spCrearEnv(fd){
+  const r=await sb.rpc("crear_espacio",{p_nombre:str(fd.nombre,40),p_alias:str((fd.alias||"").trim()||firstName(),30)});
+  if(r.error||!r.data||!r.data.ok)return toast(r.data&&r.data.error==="ya_tienes"?"Ya perteneces a un espacio.":"No se pudo crear el espacio. Revisa que ejecutaste el script de Supabase.");
+  toast("Espacio creado");await loadEspacio();
+}
+async function spUnirEnv(fd){
+  const r=await sb.rpc("unirse_espacio",{p_codigo:String(fd.codigo||""),p_alias:str((fd.alias||"").trim()||firstName(),30)});
+  const e=r.data&&r.data.error;
+  if(r.error||!r.data||!r.data.ok)return toast(e==="codigo"?"Ese código no existe. Revísalo.":e==="lleno"?"Ese espacio ya tiene dos personas.":e==="ya_tienes"?"Ya perteneces a un espacio.":e==="demasiados"?"Demasiados intentos. Espera un rato.":"No se pudo unir al espacio.");
+  toast("Te uniste al espacio");await loadEspacio();
+}
+async function spGuardarGasto(fd,id){
+  const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");
+  if(!fd.reparto)return toast("Elige cómo se reparte el gasto.");
+  const pct=fd.reparto==="50"?50:fd.reparto==="todo"?0:parseFloat(String(fd.pct||"").replace(",","."));
+  if(!(pct>=0&&pct<=100))return toast("Escribe un porcentaje entre 0 y 100.");
+  const otro=spOtro(),pagado=fd.pagador==="otro"&&otro?otro.user_id:uid;
+  const fila={monto:v,descripcion:str((fd.desc||"").trim(),120),categoria:str(fd.cat||"Otros",40),fecha:fechaOk(fd.fecha)||ymd(new Date()),pagado_por:pagado,pct_pagador:pct};
+  closeLayer(document.getElementById("spSheet"));
+  const ok=await spOp(id?sb.from("espacio_gastos").update(fila).eq("id",id):sb.from("espacio_gastos").insert({...fila,espacio_id:sp.id}),id?"Gasto actualizado":"Gasto compartido agregado");
+  if(ok&&!id&&fd.mio==="1"){
+    const mia=v*(pagado===uid?pct:100-pct)/100;
+    if(mia>=1)addMov(fila.fecha.slice(0,7),{id:uidv(),tipo:"gasto",monto:Math.round(mia),cat:fila.categoria,desc:"Compartido: "+(fila.descripcion||fila.categoria),fecha:fila.fecha});
+  }
+}
+
+async function spGuardarLiq(fd){
+  const otro=spOtro(),v=num(fd.monto);if(!sp||!otro)return;
+  if(v<=0)return toast("Escribe un monto mayor a cero.");
+  const yo=fd.dir==="yo";
+  closeLayer(document.getElementById("spSheet"));
+  await spOp(sb.from("espacio_liquidaciones").insert({espacio_id:sp.id,de:yo?uid:otro.user_id,a:yo?otro.user_id:uid,monto:v,fecha:fechaOk(fd.fecha)||ymd(new Date())}),"Pago registrado");
+}
+async function spGuardarMeta(fd){
+  const v=num(fd.objetivo),n=str((fd.nombre||"").trim(),60);
+  if(!n)return toast("Ponle un nombre a la meta.");if(v<=0)return toast("Escribe un objetivo mayor a cero.");
+  await spOp(sb.from("espacio_metas").insert({espacio_id:sp.id,nombre:n,objetivo:v,icono:"metas",color:""}),"Meta creada");
+}
+async function spGuardarAporte(fd,id){
+  const v=num(fd.monto);if(v<=0)return toast("Escribe un aporte mayor a cero.");
+  if(!sp.metas.some(m=>m.id===id))return;
+  await spOp(sb.from("espacio_aportes").insert({meta_id:id,espacio_id:sp.id,aportado_por:uid,monto:v,fecha:ymd(new Date())}),"Aporte registrado");
+}
+
 /* ---------- calendario del mes: gastos día por día, pagos fijos y qué tan cerca estás del presupuesto del día ---------- */
 const kfmt=n=>n>=1e6?(n/1e6).toFixed(n>=1e7?0:1).replace(".0","")+"M":n>=1e3?Math.round(n/1e3)+"k":String(Math.round(n));
 function diasDelMes(k){
@@ -940,6 +1109,16 @@ document.addEventListener("click",e=>{
       render();window.scrollTo(0,0);playTab("go-r");
       setTimeout(()=>{const i=document.getElementById("mv-monto");if(i)i.focus({preventScroll:true});},60);break;}
     case "calDay":openDay(id,b);break;
+    case "spRecargar":spEstado="cargando";render();loadEspacio();break;
+    case "spCopiar":{if(!sp)break;(navigator.clipboard?navigator.clipboard.writeText(sp.codigo):Promise.reject()).then(()=>toast("Código copiado"),()=>toast("No se pudo copiar. Mantén presionado el código para copiarlo."));break;}
+    case "spSalir":if(!confirmClick(b))return;(async()=>{const r=await sb.rpc("salir_espacio");if(r.error)return toast("No se pudo salir del espacio.");sp=null;spEstado="ok";toast("Saliste del espacio");render();})();break;
+    case "spNuevoGasto":openSpGasto("",b);break;
+    case "spEditGasto":openSpGasto(id,b);break;
+    case "spDelGasto":if(!confirmClick(b))return;spOp(sb.from("espacio_gastos").delete().eq("id",id),"Gasto borrado");break;
+    case "spSaldar":openSpLiq(b);break;
+    case "spDelLiq":if(!confirmClick(b))return;spOp(sb.from("espacio_liquidaciones").delete().eq("id",id),"Pago borrado");break;
+    case "spDelMeta":if(!confirmClick(b))return;spOp(sb.from("espacio_metas").delete().eq("id",id),"Meta eliminada");break;
+    case "spDelAporte":if(!confirmClick(b))return;spOp(sb.from("espacio_aportes").delete().eq("id",id),"Aporte borrado");break;
     case "goMov":{
       movTipo=id==="ingreso"?"ingreso":"gasto";tab="movimientos";
       try{localStorage.setItem("fin.mov",movTipo);localStorage.setItem("fin.tab",tab)}catch(_){ }
@@ -963,6 +1142,12 @@ document.addEventListener("submit",e=>{
   const f=e.target.closest("form[data-form]");if(!f)return;e.preventDefault();
   const fd=Object.fromEntries(new FormData(f));const id=f.dataset.id;
   switch(f.dataset.form){
+    case "spCrear":spCrearEnv(fd);return;
+    case "spUnir":spUnirEnv(fd);return;
+    case "spGasto":spGuardarGasto(fd,id||"");return;
+    case "spLiq":spGuardarLiq(fd);return;
+    case "spMeta":spGuardarMeta(fd).then(()=>{});f.reset();return;
+    case "spAporte":spGuardarAporte(fd,id);f.reset();return;
     case "apay":{
       const p=pend.find(x=>x.id===id);if(!p)return;
       const v=num(fd.monto);if(v<=0)return toast("Escribe un monto mayor a cero.");
@@ -1056,10 +1241,10 @@ function setSession(session){
   if(session&&session.user){
     if(authMode==="reset")return;
     userMail=session.user.email||"";$("userEmail").textContent=userMail;
-    if(uid!==session.user.id){uid=session.user.id;ready=false;cfg=defCfg();months={};pend=[];showApp();render();loadAll();}
+    if(uid!==session.user.id){uid=session.user.id;ready=false;cfg=defCfg();months={};pend=[];sp=null;spEstado="idle";showApp();render();loadAll();}
     else showApp();
   }else{
-    uid=null;ready=false;cfg=defCfg();months={};pend=[];autoToken="";userMail="";resetLayers();
+    uid=null;ready=false;cfg=defCfg();months={};pend=[];sp=null;spEstado="idle";autoToken="";userMail="";resetLayers();
     $("authPass").value="";setAuthMode("login");showAuth();
     if(notice){authMsg(notice,true);notice="";}
   }
@@ -1502,6 +1687,7 @@ function openMore(opener){
   const m=month(cur),pend=cfg.fijos.filter(f=>!m.pagados[f.id]).length,saldo=sum(cfg.deudas.map(d=>d.saldo));
   const rows=[["fijos","Pagos fijos",cfg.fijos.length?(pend?pend+(pend===1?" pendiente":" pendientes")+" este mes":"Todos pagados"):"Sin pagos fijos"],
     ["deudas","Deudas",cfg.deudas.length?"Saldo total "+money(saldo):"Sin deudas"],["historial","Historial","Últimos 6 meses y exportar"],
+    ["nosotros","Nosotros",sp?spSaldoTxt():"Gastos y metas en pareja"],
     ["calendario","Calendario","Gastos y pagos día por día"],
     ["logros","Rachas y logros",rachaInfo().streak+(rachaInfo().streak===1?" día":" días")+" de racha"]];
   $("moreList").innerHTML=rows.map(([id,n,s])=>`<button type="button" class="morerow" data-act="tab" data-id="${id}">${svg(id)}<span class="nm">${n}<small>${esc(s)}</small></span><span class="chev" aria-hidden="true">&rsaquo;</span></button>`).join("");

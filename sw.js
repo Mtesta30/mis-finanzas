@@ -1,6 +1,6 @@
 // Service worker: permite instalar la app y abrirla rápido.
 // Los datos siempre se leen de Supabase; aquí solo se guardan los archivos de la página.
-const CACHE = "mis-finanzas-v29";
+const CACHE = "mis-finanzas-v30";
 const SHELL = ["/", "/index.html", "/config.js", "/app.js", "/vendor/supabase-js-2.117.2.js", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
