@@ -541,6 +541,21 @@ html.editmode header.top,html.editmode body::before,html.editmode .tabbar,html.e
 .auth-card .btn.loading{color:transparent;pointer-events:none}
 .auth-card .btn.loading::after{content:"";position:absolute;inset:0;margin:auto;width:20px;height:20px;border-radius:50%;border:2.5px solid var(--accent-ink);border-right-color:transparent;animation:spin .7s linear infinite}
 .auth-card .linkbtn{text-align:center;justify-self:center}
+/* Selector de vidrio líquido: Entrar / Registrarme */
+.seg-glass{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:999px;background:color-mix(in srgb,var(--fg) 7%,transparent);box-shadow:inset 0 1px 3px rgba(0,0,0,.12)}
+.seg-glass button{position:relative;z-index:1;height:42px;border:0;background:none;border-radius:999px;font:600 .92rem var(--f-body);color:var(--muted);cursor:pointer;transition:color 200ms ease}
+.seg-glass button[aria-selected="true"]{color:var(--fg)}
+.seg-glass .thumb{position:absolute;z-index:0;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,.35));border:1px solid rgba(255,255,255,.7);box-shadow:0 6px 16px -6px rgba(20,24,40,.35),inset 0 1px 0 rgba(255,255,255,.9),inset 0 -6px 10px -6px color-mix(in srgb,var(--accent) 35%,transparent);-webkit-backdrop-filter:blur(10px) saturate(180%);backdrop-filter:blur(10px) saturate(180%);transition:transform 420ms cubic-bezier(.34,1.45,.64,1)}
+.seg-glass[data-m="signup"] .thumb{transform:translateX(100%)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .seg-glass .thumb{background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.07));border-color:rgba(255,255,255,.22);box-shadow:0 6px 16px -6px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.3)}}
+:root[data-theme="dark"] .seg-glass .thumb{background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.07));border-color:rgba(255,255,255,.22);box-shadow:0 6px 16px -6px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.3)}
+/* Recuperar y nueva contraseña: sin selector, con llave en vez del logo */
+.logo-alt{display:none;width:34px;height:34px;color:var(--accent);flex:none;padding:6px;box-sizing:border-box;border-radius:12px;background:var(--accent-soft)}
+.auth-card[data-mode="forgot"] .logo,.auth-card[data-mode="reset"] .logo{display:none}
+.auth-card[data-mode="forgot"] .logo-alt,.auth-card[data-mode="reset"] .logo-alt{display:block}
+.auth-card[data-mode="forgot"] #authSeg,.auth-card[data-mode="reset"] #authSeg{display:none}
+.auth-card[data-mode="forgot"] #authSwitch,.auth-card[data-mode="reset"] #authSwitch{text-align:left;justify-self:start}
+.auth-card[data-mode="login"] #authSwitch,.auth-card[data-mode="signup"] #authSwitch{display:none}
 .tagline{margin:0;color:var(--muted);font-size:.9rem;letter-spacing:.01em;transition:opacity 400ms ease,transform 400ms ease}
 .tagline.out{opacity:0;transform:translateY(6px)}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -697,10 +712,16 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
 </div>
 <main class="auth">
  <div class="auth-col">
-  <div class="auth-card">
+  <div class="auth-card" data-mode="login">
     <div class="brand">
       <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><rect x="8" y="56" width="20" height="36" rx="6"/><rect x="40" y="32" width="20" height="60" rx="6"/><rect x="72" y="8" width="20" height="84" rx="6"/></svg>
-      <h1>Cuantía</h1>
+      <svg class="logo-alt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg>
+      <h1 id="authTitle">Cuantía</h1>
+    </div>
+    <div class="seg-glass" id="authSeg" data-m="login" role="tablist" aria-label="Acceso">
+      <i class="thumb" aria-hidden="true"></i>
+      <button type="button" role="tab" data-mode="login" aria-selected="true">Entrar</button>
+      <button type="button" role="tab" data-mode="signup" aria-selected="false">Registrarme</button>
     </div>
     <p class="sub" id="authSub">Inicia sesión para ver tus ingresos y gastos.</p>
     <div class="msg" id="authMsg" hidden></div>

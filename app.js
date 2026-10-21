@@ -1216,11 +1216,16 @@ function setAuthMode(mode){
     forgot:["Te enviamos un enlace a tu correo para crear una contraseña nueva.","Enviar enlace","Volver a iniciar sesión"],
     reset:["Escribe tu contraseña nueva.","Guardar contraseña","Volver a iniciar sesión"]}[mode];
   $("authSub").textContent=t[0];$("authBtn").textContent=t[1];$("authSwitch").textContent=t[2];
+  document.querySelector(".auth-card").dataset.mode=mode;
+  $("authTitle").textContent={login:"Cuantía",signup:"Crea tu cuenta",forgot:"Recuperar acceso",reset:"Nueva contraseña"}[mode];
+  const sg=$("authSeg");sg.dataset.m=mode==="signup"?"signup":"login";
+  sg.querySelectorAll("button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.mode===sg.dataset.m)));
   $("emailRow").hidden=mode==="reset";$("passRow").hidden=mode==="forgot";$("authForgot").hidden=mode!=="login";
   $("authPass").autocomplete=mode==="login"?"current-password":"new-password";
 }
 $("authSwitch").addEventListener("click",()=>setAuthMode(authMode==="login"?"signup":"login"));
 $("authForgot").addEventListener("click",()=>setAuthMode("forgot"));
+$("authSeg").addEventListener("click",e=>{const b=e.target.closest("button[data-mode]");if(b&&b.dataset.mode!==authMode)setAuthMode(b.dataset.mode);});
 $("authForm").addEventListener("submit",async e=>{
   e.preventDefault();e.stopPropagation();
   if(!sb)return;
