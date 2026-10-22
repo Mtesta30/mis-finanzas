@@ -1055,7 +1055,6 @@ document.addEventListener("click",e=>{
     case "closeProfile":closeLayer($("profileSheet"));break;
     case "profGo":if(PBACK[id]||id==="profMain")profShow(id);break;
     case "profBack":profBack();break;
-    case "profNos":closeLayer($("profileSheet"));tab="nosotros";try{localStorage.setItem("fin.tab",tab)}catch(_){ }render();window.scrollTo(0,0);playTab("go-r");break;
     case "pickFoto":$("fotoInput").click();break;
     case "quitarFoto":cfg.perfil.foto="";saveCfg();updateProfPhotoUI();updateTop();toast("Foto quitada");break;
     case "cropCancel":cancelCrop();break;
@@ -1325,7 +1324,8 @@ function initials(){
 function hue(s){let h=0;for(const c of s)h=(h*31+c.codePointAt(0))%360;return h;}
 function paintAvatar(el){
   const p=cfg.perfil||{};
-  if(p.foto){el.innerHTML=`<img src="${esc(p.foto)}" alt="">`;el.style.background="var(--sunk)";}
+  /* la foto va como fondo (no como <img>): en iPhone un <img> dentro de una hoja que sube a veces se pinta a medias */
+  if(p.foto){el.textContent="";el.style.background=`var(--sunk) url("${p.foto.replace(/["\\\s]/g,"")}") center/cover no-repeat`;}
   else{el.textContent=initials();el.style.background=`hsl(${hue(p.nombre||p.apodo||userMail)} 52% 40%)`;}
 }
 function updateTop(){
