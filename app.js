@@ -1201,7 +1201,7 @@ function authMsg(text,ok){
 }
 /* frase que cambia despacio bajo la tarjeta de inicio de sesión */
 (()=>{
-  const fr=["Tu plata, en orden","Cada peso con su lugar","Gasta con calma","Tu mes, claro"],el=document.getElementById("authTag");let i=0;
+  const fr=["Tu plata, en orden","Cada peso con su lugar","Gasta con calma","Tu mes, claro","Te amo mi amor","Hecho para pauli"],el=document.getElementById("authTag");let i=0;
   if(!el)return;
   setInterval(()=>{
     if($("authView").hidden)return;
