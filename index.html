@@ -250,6 +250,21 @@ button,[role="button"]{-webkit-user-select:none;user-select:none;-webkit-touch-c
 .avatar{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--accent);color:#fff;font:600 .9rem var(--f-body);letter-spacing:.02em;flex:none;user-select:none;-webkit-user-select:none}
 .avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .avatar.lg{width:88px;height:88px;font-size:1.7rem}
+.avatar.xl{width:68px;height:68px;font-size:1.2rem}
+/* Perfil como pantalla propia: ocupa todo el celular y, en pantallas anchas, una ventana alta */
+#profileSheet .sheet{height:100dvh;max-height:100dvh;border-radius:0;max-width:640px}
+#profileSheet .sheet-head{padding-top:max(22px,calc(env(safe-area-inset-top,0px) + 12px))}
+@media (min-width:700px){#profileSheet .sheet{height:min(92dvh,840px);max-height:92dvh;border-radius:24px}}
+.prof-hero{display:flex;align-items:center;gap:14px;width:100%;padding:16px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(135deg,var(--accent-soft),var(--surface));color:var(--fg);font:inherit;text-align:left;cursor:pointer;transition:transform 120ms var(--ease-out)}
+.prof-hero:active{transform:scale(.985)}
+.prof-id{display:grid;gap:2px;min-width:0;flex:1}
+.prof-id b{font:700 1.25rem var(--f-display);letter-spacing:-.02em;overflow-wrap:anywhere}
+.prof-id .sub{overflow-wrap:anywhere}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{display:grid;gap:2px;align-content:start;padding:14px;border-radius:18px;background:var(--sunk)}
+.stat svg{width:22px;height:22px;color:var(--accent-fg);margin-bottom:4px}
+.stat b{font-size:1.4rem;letter-spacing:-.02em}
+.stat.wide{grid-column:1/-1}
 .avatar-btn{border:0;padding:3px;background:none;border-radius:50%;cursor:pointer;display:grid;transition:transform 120ms var(--ease-out)}
 .avatar-btn:active{transform:scale(.94)}
 /* Hoja de perfil y ventana de bienvenida */
@@ -773,8 +788,53 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
     </div>
     <div class="sheet-body">
       <div class="stack" id="profMain">
+        <button type="button" class="prof-hero" data-act="profGo" data-id="profData">
+          <span class="avatar xl" id="profAvatar"></span>
+          <span class="prof-id"><b id="profName"></b><span class="sub" id="profMail"></span><span class="sub" id="profSince"></span></span>
+          <span class="chev" aria-hidden="true">&rsaquo;</span>
+        </button>
+        <div class="statgrid" id="profStats"></div>
+        <div class="seccard">
+          <button type="button" class="secrow secbtn" data-act="profGo" data-id="profData">
+            <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg></span>
+            <div class="secmain"><span class="secval">Datos personales</span><span class="sub">Foto, nombre, apodo y contacto</span></div>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </button>
+          <button type="button" class="secrow secbtn" data-act="profGo" data-id="profLook">
+            <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg></span>
+            <div class="secmain"><span class="secval">Apariencia</span><span class="sub">Tema claro u oscuro y color de la app</span></div>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </button>
+          <button type="button" class="secrow secbtn" data-act="openAuto">
+            <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
+            <div class="secmain"><span class="secval">Pagos automáticos</span><span class="sub" id="autoStatus">Detecta tus pagos y regístralos con un toque</span></div>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </button>
+          <button type="button" class="secrow secbtn" data-act="profNos">
+            <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.8"/><path d="M16.5 14.2c3 .2 5 2.2 5 5.3"/></svg></span>
+            <div class="secmain"><span class="secval">Nosotros</span><span class="sub">Tu espacio compartido de pareja</span></div>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </button>
+          <button type="button" class="secrow secbtn" data-act="profGo" data-id="profBackup">
+            <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg></span>
+            <div class="secmain"><span class="secval">Datos y respaldo</span><span class="sub">Descarga una copia de todo</span></div>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </button>
+          <button type="button" class="secrow secbtn" data-act="profGo" data-id="profSec">
+            <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+            <div class="secmain"><span class="secval">Seguridad</span><span class="sub">Correo y contraseña</span></div>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </button>
+        </div>
+        <div class="acct">
+          <span class="sub">Sesión</span>
+          <button type="button" class="btn ghost sm" data-act="logout">Cerrar sesión</button>
+        </div>
+      </div>
+      <div class="passbox" id="profData" hidden>
+        <button type="button" class="backbtn" data-act="profBack"><span aria-hidden="true">&lsaquo;</span> Perfil</button>
         <div class="prof-photo">
-          <span class="avatar lg" id="profAvatar"></span>
+          <span class="avatar lg" id="profAvatar2"></span>
           <div class="prof-photo-actions">
             <button type="button" class="btn ghost sm" id="pickFotoBtn" data-act="pickFoto">Subir foto</button>
             <button type="button" class="icon" id="quitarFotoBtn" data-act="quitarFoto" hidden>Quitar</button>
@@ -789,8 +849,18 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
           <label class="f">Ciudad<input name="ciudad" maxlength="60" autocomplete="address-level2"></label>
           <button class="btn">Guardar perfil</button>
         </form>
-        <section class="look" aria-labelledby="lookTitle">
-          <h3 id="lookTitle">Apariencia</h3>
+      </div>
+      <div class="passbox" id="profBackup" hidden>
+        <button type="button" class="backbtn" data-act="profBack"><span aria-hidden="true">&lsaquo;</span> Perfil</button>
+        <div>
+          <h3>Copia de tus datos</h3>
+          <p class="sub">Descarga todos tus movimientos, pagos fijos, presupuestos, metas y deudas en un archivo. Guárdalo como respaldo. Para sacar solo tus movimientos en una hoja de cálculo, ve a Historial.</p>
+        </div>
+        <div><button type="button" class="btn" data-act="expJson">Descargar respaldo completo</button></div>
+      </div>
+      <div class="passbox" id="profLook" hidden>
+        <button type="button" class="backbtn" data-act="profBack"><span aria-hidden="true">&lsaquo;</span> Perfil</button>
+        <section class="look" aria-label="Apariencia">
           <div class="look-row">
             <span class="sub">Tema</span>
             <div class="seg" role="group" aria-label="Tema">
@@ -806,18 +876,10 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
           <p class="sub" id="lookNote" hidden>Ajustamos el tono en los textos para que se lean bien.</p>
           <div><button type="button" class="btn ghost sm" data-act="resetLook">Restablecer</button></div>
         </section>
-        <section class="sec" aria-labelledby="autoTitle">
-          <h3 id="autoTitle">Pagos automáticos</h3>
-          <div class="seccard">
-            <button type="button" class="secrow secbtn" data-act="openAuto">
-              <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
-              <div class="secmain"><span class="secval">Apple Pay</span><span class="sub" id="autoStatus">Detecta tus pagos y regístralos con un toque</span></div>
-              <span class="chev" aria-hidden="true">&rsaquo;</span>
-            </button>
-          </div>
-        </section>
-        <section class="sec" aria-labelledby="secTitle">
-          <h3 id="secTitle">Seguridad</h3>
+      </div>
+      <div class="passbox" id="profSec" hidden>
+        <button type="button" class="backbtn" data-act="profBack"><span aria-hidden="true">&lsaquo;</span> Perfil</button>
+        <section aria-label="Seguridad">
           <div class="seccard">
             <div class="secrow">
               <span class="secicon" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
@@ -830,10 +892,6 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
             </button>
           </div>
         </section>
-        <div class="acct">
-          <span class="sub">Sesión</span>
-          <button type="button" class="btn ghost sm" data-act="logout">Cerrar sesión</button>
-        </div>
       </div>
       <div class="passbox" id="autoBox" hidden>
         <button type="button" class="backbtn" data-act="autoBack"><span aria-hidden="true">&lsaquo;</span> Perfil</button>
@@ -870,7 +928,7 @@ ul.list.pend li{grid-template-columns:1fr;gap:8px}
         </ol>
       </div>
       <div class="passbox" id="passBox" hidden>
-        <button type="button" class="backbtn" data-act="passBack"><span aria-hidden="true">&lsaquo;</span> Perfil</button>
+        <button type="button" class="backbtn" data-act="passBack"><span aria-hidden="true">&lsaquo;</span> Seguridad</button>
         <div>
           <h3>Cambiar contraseña</h3>
           <p class="sub">Elige una contraseña que no uses en otros sitios.</p>

@@ -275,10 +275,10 @@ function remindersHTML(){
 }
 
 /* bloques del Resumen que se pueden reordenar: tamaño (f completo, m completo en celular, s mitad, h mitad en computadora) y orden de fábrica */
-const BLOCK_SIZE={pend:"f",remind:"f",mes:"f",disp:"m",rit:"h",ing:"s",egr:"s",aho:"m",reg:"h",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
-const BLOCK_DEFAULT=["pend","remind","mes","disp","rit","ing","egr","aho","reg","fijos","gastos","salmes","salbase"];
+const BLOCK_SIZE={pend:"f",remind:"f",mes:"f",disp:"m",rit:"h",ing:"s",egr:"s",aho:"m",nos:"h",reg:"h",fijos:"h",gastos:"h",salmes:"h",salbase:"h"};
+const BLOCK_DEFAULT=["pend","remind","mes","disp","rit","ing","egr","aho","nos","reg","fijos","gastos","salmes","salbase"];
 /* en el modo edición cada bloque se reduce a una ficha liviana (ícono y nombre): moverla es mucho más fluido que mover el panel completo */
-const BLOCK_CHIP={mes:["Tu mes en cifras","historial"],pend:["Pagos detectados","movimientos"],remind:["Pagos por atender","fijos"],disp:["Disponible","resumen"],rit:["Ritmo del día","presupuestos"],ing:["Ingresos","up"],egr:["Egresos","down"],aho:["Ahorrado","metas"],
+const BLOCK_CHIP={mes:["Tu mes en cifras","historial"],pend:["Pagos detectados","movimientos"],remind:["Pagos por atender","fijos"],disp:["Disponible","resumen"],rit:["Ritmo del día","presupuestos"],ing:["Ingresos","up"],egr:["Egresos","down"],aho:["Ahorrado","metas"],nos:["Nosotros","nosotros"],
   reg:["Registrar","plus"],fijos:["Pagos fijos","fijos"],gastos:["En qué se va tu dinero","presupuestos"],salmes:["Salario del mes","deudas"],salbase:["Salario base","deudas"]};
 function blockOrder(){
   const order=arr(cfg.widgets&&cfg.widgets.orden).filter((id,i,a)=>BLOCK_DEFAULT.includes(id)&&a.indexOf(id)===i);
@@ -329,7 +329,7 @@ function vResumen(){
     pend:pendHTML,
     remind:remindersHTML,
     mes:mesBanner,
-    disp:()=>k.disp, rit:ritHTML, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho,
+    disp:()=>k.disp, rit:ritHTML, ing:()=>k.ing, egr:()=>k.egr, aho:()=>k.aho, nos:nosHTML,
     reg:()=>`<section class="panel"><div><h2>Registrar</h2><p class="sub">Anota un movimiento de ${mName(cur)}.</p></div>
       <div class="quickrow"><button type="button" class="qbtn q-gasto" data-act="goMov" data-id="gasto">Registrar gasto</button><button type="button" class="qbtn q-ingreso" data-act="goMov" data-id="ingreso">Registrar ingreso</button></div></section>`,
     fijos:()=>`<section class="panel"><div class="split"><h2>Pagos fijos</h2><span class="chip ${pendF.length?"warn":"good"}">${cfg.fijos.length?(pendF.length?pendF.length+" pendientes":"Todos pagados"):"Sin pagos fijos"}</span></div>
@@ -738,6 +738,17 @@ function spSaldoTxt(){
   const nm=otro.alias||"Tu pareja";
   return s===0?"Están a mano.":s>0?`${nm} te debe ${money(s)}.`:`Le debes ${money(-s)} a ${nm}.`;
 }
+/* resumen de Nosotros para la pantalla de inicio: saldo, total compartido del mes y los últimos gastos */
+function nosHTML(){
+  if(!sp)return "";
+  const otro=spOtro(),delMes=sp.gastos.filter(g=>g.fecha.startsWith(cur)),saldo=Math.round(spSaldo());
+  const chip=!otro?`<span class="chip">Esperando a tu pareja</span>`:saldo===0?`<span class="chip good">A mano</span>`:saldo>0?`<span class="chip good">Te deben</span>`:`<span class="chip warn">Debes</span>`;
+  const ult=delMes.slice(0,3).map(g=>`<li><div class="li-main"><b>${esc(g.desc||g.cat)}</b><small>${esc(g.fecha)} · pagó ${esc(spNom(g.pagado_por))}</small></div><span class="num">${money(g.monto)}</span></li>`).join("");
+  return `<section class="panel"><div class="split"><div><h2>${esc(sp.nombre)}</h2><p class="sub">${esc(spSaldoTxt())}</p></div>${chip}</div>
+    <div class="split"><span class="sub">Compartido en ${mName(cur)}</span><span class="num"><b>${money(sum(delMes.map(g=>g.monto)))}</b></span></div>
+    ${ult?`<ul class="list">${ult}</ul>`:`<div class="empty">Aún no hay gastos compartidos este mes.</div>`}
+    <div><button type="button" class="btn ghost sm" data-act="tab" data-id="nosotros">Ver Nosotros</button></div></section>`;
+}
 function vNos(){
   if(spEstado==="sin_tablas")return `<section class="panel"><div class="notice">Falta un paso en Supabase: ejecuta una vez el archivo <b>supabase/nosotros.sql</b> en el SQL Editor y vuelve a abrir esta pantalla.</div></section>`;
   if(spEstado==="error")return `<section class="panel"><div class="notice">No se pudo cargar el espacio compartido. Revisa tu conexión e inténtalo de nuevo.</div><div><button type="button" class="btn ghost sm" data-act="spRecargar">Reintentar</button></div></section>`;
@@ -1042,6 +1053,9 @@ document.addEventListener("click",e=>{
     case "logout":sb&&sb.auth.signOut();break;
     case "openProfile":openProfile(b);break;
     case "closeProfile":closeLayer($("profileSheet"));break;
+    case "profGo":if(PBACK[id]||id==="profMain")profShow(id);break;
+    case "profBack":profBack();break;
+    case "profNos":closeLayer($("profileSheet"));tab="nosotros";try{localStorage.setItem("fin.tab",tab)}catch(_){ }render();window.scrollTo(0,0);playTab("go-r");break;
     case "pickFoto":$("fotoInput").click();break;
     case "quitarFoto":cfg.perfil.foto="";saveCfg();updateProfPhotoUI();updateTop();toast("Foto quitada");break;
     case "cropCancel":cancelCrop();break;
@@ -1259,10 +1273,11 @@ function setSession(session){
   if(session&&session.user){
     if(authMode==="reset")return;
     userMail=session.user.email||"";$("userEmail").textContent=userMail;
+    userSince=session.user.created_at?new Date(session.user.created_at).toLocaleDateString("es-CO",{month:"long",year:"numeric"}):"";
     if(uid!==session.user.id){uid=session.user.id;ready=false;cfg=defCfg();months={};pend=[];sp=null;spEstado="idle";showApp();render();loadAll();}
     else showApp();
   }else{
-    uid=null;ready=false;cfg=defCfg();months={};pend=[];sp=null;spEstado="idle";autoToken="";userMail="";resetLayers();
+    uid=null;ready=false;cfg=defCfg();months={};pend=[];sp=null;spEstado="idle";autoToken="";userMail="";userSince="";resetLayers();
     $("authPass").value="";setAuthMode("login");showAuth();
     if(notice){authMsg(notice,true);notice="";}
   }
@@ -1287,7 +1302,7 @@ function idleCheck(){
 setInterval(idleCheck,15000);
 
 /* ---------- perfil: saludo, avatar y hoja ---------- */
-let userMail="",topKey="";
+let userMail="",userSince="",topKey="";
 const PROF_FIELDS=["nombre","apodo","telefono","nacimiento","ciudad"];
 function emailName(){
   const p=(userMail.split("@")[0]||"").split(/[._+\-]/)[0].replace(/[^\p{L}]/gu,"");
@@ -1317,7 +1332,7 @@ function updateTop(){
   const p=cfg.perfil||{},g=greeting();
   const key=[g,initials(),(p.foto||"").length,(p.foto||"").slice(-24),p.nombre,userMail].join("|");
   if(key===topKey)return;
-  topKey=key;$("greeting").textContent=g;paintAvatar($("topAvatar"));paintAvatar($("profAvatar"));
+  topKey=key;$("greeting").textContent=g;paintAvatar($("topAvatar"));paintAvatar($("profAvatar"));paintAvatar($("profAvatar2"));
 }
 
 /* capas (hoja de perfil y bienvenida): entran y salen con transición */
@@ -1338,7 +1353,7 @@ function closeLayer(el){
 function resetLayers(){
   document.querySelectorAll(".layer").forEach(el=>{clearTimeout(layerTimers.get(el));el.classList.remove("open");el.hidden=true;});
   document.documentElement.classList.remove("noscroll");$("topbar").inert=false;$("appView").inert=false;$("tabs").inert=false;
-  crop.img=null;$("cropBox").hidden=true;$("passBox").hidden=true;$("autoBox").hidden=true;$("profMain").hidden=false;
+  crop.img=null;profShow("profMain");
 }
 /* selector de meses: cuadrícula de 12 meses que sale de la píldora */
 let pickYear=0,popOpen=false;
@@ -1369,16 +1384,41 @@ document.addEventListener("keydown",e=>{
   if(story){closeStory();return;}
   if(editing){exitEdit();return;}
   if(popOpen){closeMonthPop(true);return;}
-  if(!$("cropBox").hidden){cancelCrop();return;}
-  if(!$("passBox").hidden){closePass();return;}
-  if(!$("autoBox").hidden){closeAuto();return;}
+  if(!$("profileSheet").hidden&&profView!=="profMain"){profBack();return;}
   const sheet=document.querySelector(".layer.open:not(.center)");
   if(sheet)closeLayer(sheet);
   else if($("welcome").classList.contains("open")){cfg.perfil.omitido=true;saveCfg();closeLayer($("welcome"));}
 });
 
+/* el perfil es una pantalla con subpantallas: solo una se ve a la vez y "Atrás" vuelve a la anterior */
+var profView="profMain";
+const PBACK={profData:"profMain",profLook:"profMain",profSec:"profMain",profBackup:"profMain",autoBox:"profMain",passBox:"profSec",cropBox:"profData"};
+function profShow(id){
+  const T={profMain:"Tu perfil",profData:"Datos personales",profLook:"Apariencia",profSec:"Seguridad",profBackup:"Datos y respaldo",autoBox:"Pagos automáticos",passBox:"Cambiar contraseña",cropBox:"Tu foto"};
+  profView=id;
+  Object.keys(T).forEach(p=>{$(p).hidden=p!==id;});
+  $("profTitle").textContent=T[id];
+  const b=document.querySelector("#profileSheet .sheet-body");if(b)b.scrollTop=0;
+  if(id==="profMain")renderProfHub();
+}
+function profBack(){
+  if(profView==="cropBox")cancelCrop();else if(profView==="passBox")closePass();else if(profView==="autoBox")closeAuto();
+  else profShow(PBACK[profView]||"profMain");
+}
+/* portada del perfil: tu nombre y las cifras que cuentan cuánto has avanzado */
+function renderProfHub(){
+  if(!ready)return;
+  $("profName").textContent=(cfg.perfil.nombre||"").trim()||firstName()||"Tu perfil";
+  $("profMail").textContent=userMail;
+  $("profSince").textContent=userSince?"Con Cuantía desde "+userSince:"";
+  const r=rachaInfo(),lg=cfg.logros?cfg.logros.vistos.length:0,ok=cfg.metas.filter(g=>g.objetivo>0&&g.ahorrado>=g.objetivo).length,ah=sum(cfg.metas.map(g=>g.ahorrado||0));
+  const t=[[svg("flame"),r.streak,r.streak===1?"día de racha":"días de racha"],[svg("star"),Math.min(lg,LOGROS.length)+" / "+LOGROS.length,"logros"],
+    [svg("metas"),ok+" / "+cfg.metas.length,"metas cumplidas"],[svg("historial"),r.total,r.total===1?"movimiento":"movimientos"]];
+  $("profStats").innerHTML=t.map(([ic,v,l])=>`<div class="stat">${ic}<b class="num">${v}</b><span class="sub">${l}</span></div>`).join("")
+    +`<div class="stat wide">${svg("coin")}<b class="num">${money(ah)}</b><span class="sub">ahorrado en tus metas</span></div>`;
+}
 function updateProfPhotoUI(){
-  paintAvatar($("profAvatar"));
+  paintAvatar($("profAvatar"));paintAvatar($("profAvatar2"));
   $("quitarFotoBtn").hidden=!cfg.perfil.foto;
   $("pickFotoBtn").textContent=cfg.perfil.foto?"Cambiar foto":"Subir foto";
 }
@@ -1387,7 +1427,7 @@ function openProfile(opener){
   const f=$("profForm");
   PROF_FIELDS.forEach(k=>{f.elements[k].value=cfg.perfil[k]||"";});
   f.elements.nacimiento.max=new Date().toISOString().slice(0,10);
-  $("cropBox").hidden=true;$("passBox").hidden=true;$("autoBox").hidden=true;$("profMain").hidden=false;updateProfPhotoUI();
+  profShow("profMain");updateProfPhotoUI();
   openLayer($("profileSheet"),opener);refreshAuto();
 }
 function maybeWelcome(){
@@ -1427,11 +1467,11 @@ function paintCrop(){
 }
 function startCrop(img){
   crop.img=img;crop.w=img.naturalWidth;crop.h=img.naturalHeight;
-  $("profMain").hidden=true;$("cropBox").hidden=false;
+  profShow("cropBox");
   crop.vp=$("cropVp").clientWidth||260;crop.base=Math.max(crop.vp/crop.w,crop.vp/crop.h);
   crop.zoom=1;crop.x=0;crop.y=0;$("cropZoom").value=1;$("cropImg").src=img.src;paintCrop();
 }
-function cancelCrop(){crop.img=null;$("cropImg").removeAttribute("src");$("cropBox").hidden=true;$("profMain").hidden=false;}
+function cancelCrop(){crop.img=null;$("cropImg").removeAttribute("src");profShow("profData");}
 function cropDone(){
   if(!crop.img)return;
   const OUT=256,k=OUT/crop.vp,s=crop.base*crop.zoom;
@@ -1641,8 +1681,8 @@ function resetPassForm(){
   document.querySelectorAll("#passForm .eye").forEach(b=>{$(b.dataset.id).type="password";b.setAttribute("aria-pressed","false");b.setAttribute("aria-label","Mostrar contraseña");});
   updatePass();
 }
-function openPass(){resetPassForm();$("pwUser").value=userMail;$("profMain").hidden=true;$("passBox").hidden=false;$("p1").focus({preventScroll:true});}
-function closePass(){resetPassForm();$("passBox").hidden=true;$("profMain").hidden=false;}
+function openPass(){resetPassForm();$("pwUser").value=userMail;profShow("passBox");$("p1").focus({preventScroll:true});}
+function closePass(){resetPassForm();profShow("profSec");}
 $("p1").addEventListener("input",updatePass);$("p2").addEventListener("input",updatePass);
 async function changePassword(f,fd){
   const ok=pwOk();
@@ -1673,10 +1713,10 @@ function openAuto(){
   $("urlVal").textContent=(conf.supabaseUrl||"")+"/rest/v1/rpc/registrar_pago_atajo";
   $("pubVal").textContent=conf.supabaseAnonKey||"";
   autoToken="";$("keyBox").hidden=true;$("autoTest").hidden=true;
-  $("profMain").hidden=true;$("autoBox").hidden=false;
+  profShow("autoBox");
   refreshAuto();
 }
-function closeAuto(){autoToken="";$("keyVal").textContent="";$("autoBox").hidden=true;$("profMain").hidden=false;refreshAuto();}
+function closeAuto(){autoToken="";$("keyVal").textContent="";profShow("profMain");refreshAuto();}
 async function autoGen(){
   if(!sb||!uid)return;
   const tok=hex(crypto.getRandomValues(new Uint8Array(32)));
